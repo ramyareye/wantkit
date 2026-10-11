@@ -2,7 +2,7 @@ import { launch, type BrowserWorker } from "@cloudflare/playwright";
 import {
   researchResultSuggestionSchema,
   type ResearchResultSuggestion,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 
 const fixturePathPattern =
   /^\/api\/research-fixtures\/products\/[a-z0-9-]+\/?$/u;

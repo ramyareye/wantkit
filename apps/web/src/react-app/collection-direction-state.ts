@@ -1,4 +1,4 @@
-import type { CollectionBriefColor } from "@kharidyar/contracts";
+import type { CollectionBriefColor } from "@wantkit/contracts";
 
 export interface EuroAmountResult {
   minor: number | null;

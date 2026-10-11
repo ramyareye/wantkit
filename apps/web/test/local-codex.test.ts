@@ -6,7 +6,7 @@ import {
   localCodexStatusSchema,
   researchDeskResponseSchema,
   type LocalCodexJob,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import app from "../src/worker";
 const origin = "http://example.com",
   owner = "local-owner",

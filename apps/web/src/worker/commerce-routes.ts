@@ -7,7 +7,7 @@ import {
 	priceCheckInputSchema,
 	productUpdateInputSchema,
 	purchaseRecordInputSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { Hono } from "hono";
 
 import {

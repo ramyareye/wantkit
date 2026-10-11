@@ -1,4 +1,4 @@
-import { visualLimits } from "@kharidyar/contracts";
+import { visualLimits } from "@wantkit/contracts";
 
 // vr is a visual_runs row. Sources are immutable private objects, not public URLs.
 export const visualSourcesCurrentSql = `not exists (

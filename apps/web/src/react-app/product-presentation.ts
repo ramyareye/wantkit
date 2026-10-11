@@ -1,4 +1,4 @@
-import type { CandidateComparison } from "@kharidyar/contracts";
+import type { CandidateComparison } from "@wantkit/contracts";
 
 export function safeProductLink(value?: string | null): string | null {
 	try {

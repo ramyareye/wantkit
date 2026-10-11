@@ -11,8 +11,8 @@ import {
 	type ImportDraftResource,
 	type ImportProposal,
 	type ImportWarning,
-} from "@kharidyar/contracts";
-import { hasCapability, type Capability } from "@kharidyar/domain";
+} from "@wantkit/contracts";
+import { hasCapability, type Capability } from "@wantkit/domain";
 
 import { badRequest, conflict, notFound, resourceArchived } from "./api-errors";
 import {

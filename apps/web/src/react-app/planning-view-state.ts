@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from "@kharidyar/contracts";
+import type { ApiErrorCode } from "@wantkit/contracts";
 
 export type LoadPhase = "idle" | "loading" | "ready";
 

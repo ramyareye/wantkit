@@ -2,7 +2,7 @@ import { env, exports } from "cloudflare:workers";
 import {
 	collectionRollupResponseSchema,
 	itemComparisonResponseSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const authSecret = "task-3-test-secret-with-at-least-32-characters";

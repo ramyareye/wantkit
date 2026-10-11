@@ -14,7 +14,7 @@ import {
   type ResearchRequestCreateInput,
   type ResearchResultPromotionInput,
   type ResearchResultSuggestion,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
   hasCapability,
   isResearchRunTerminal,
@@ -23,7 +23,7 @@ import {
   type ResearchExtractionStatus,
   type ResearchResultStatus,
   type ResearchRunStatus,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 
 import { conflict, notFound, resourceArchived } from "./api-errors";
 import {

@@ -1,4 +1,4 @@
-import { localCodexStatusSchema } from "@kharidyar/contracts";
+import { localCodexStatusSchema } from "@wantkit/contracts";
 import { z } from "zod";
 import type {
   CollectionResource,
@@ -7,13 +7,13 @@ import type {
   ResearchResultPromotionInput,
   ResearchResultResource,
   ResearchRunResource,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
   formatDateTime,
   formatMoney,
   formatNumber,
   type MessageKey,
-} from "@kharidyar/i18n";
+} from "@wantkit/i18n";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { parseEuroAmount } from "./collection-direction-state";

@@ -3,7 +3,7 @@ import {
 	type CallToolResult,
 } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { visualImportSchema, visualIdentifier, visualRunResultSchema, visualImageResultSchema } from "@kharidyar/contracts";
+import { visualImportSchema, visualIdentifier, visualRunResultSchema, visualImageResultSchema } from "@wantkit/contracts";
 import type { ActionContext } from "./mcp-action-catalog";
 import {
 	importVisualImage,

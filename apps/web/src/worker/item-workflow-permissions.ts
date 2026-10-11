@@ -1,5 +1,5 @@
-import type { ItemPermissions } from "@kharidyar/contracts";
-import { hasCapability } from "@kharidyar/domain";
+import type { ItemPermissions } from "@wantkit/contracts";
+import { hasCapability } from "@wantkit/domain";
 
 import type { ResourceAccess } from "./authorization";
 

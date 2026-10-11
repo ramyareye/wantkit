@@ -3,7 +3,7 @@ import {
 	type CallToolResult,
 } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { mcpActionReceiptSchema } from "@kharidyar/contracts";
+import { mcpActionReceiptSchema } from "@wantkit/contracts";
 import { mcpWriteScope } from "../auth/mcp-options";
 import {
 	mcpActionCatalog,

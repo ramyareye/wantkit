@@ -1,4 +1,4 @@
-import type { ItemResource, RollupLine } from "@kharidyar/contracts";
+import type { ItemResource, RollupLine } from "@wantkit/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ItemWorkflowDialog } from "./ItemWorkflowDialog";

@@ -1,4 +1,4 @@
-# @kharidyar/i18n
+# @wantkit/i18n
 
 Runtime-independent Persian and English message catalogs, locale detection,
 direction metadata, interpolation, and locale-aware number, date, and money

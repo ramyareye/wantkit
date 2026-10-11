@@ -1,3 +1,6 @@
+import { collectionModeSchema } from "@wantkit/contracts";
+import { defaultCollectionMode } from "@wantkit/domain";
+
 import type {
 	ArchiveListQuery,
 	CollectionCreateInput,
@@ -13,12 +16,12 @@ import type {
 	WorkspaceResource,
 	WorkspaceSummary,
 	WorkspaceUpdateInput,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import type {
 	Capability,
 	ItemPriority,
 	ItemStatus,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 
 import {
 	loadCollectionAccess,
@@ -620,7 +623,10 @@ export async function createCollection(input: {
 	);
 	const now = Date.now();
 	const collectionId = crypto.randomUUID();
-	const created = await input.database
+	const mode = collectionModeSchema.parse(
+		input.value.mode ?? defaultCollectionMode,
+	);
+	const creation = input.database
 		.prepare(
 			`insert into collections (
 				id, workspace_id, name, description, created_by_user_id,
@@ -646,8 +652,17 @@ export async function createCollection(input: {
 			input.userId,
 			now,
 			input.workspaceId,
-		)
-		.first<CollectionRow>();
+		);
+	// Both records commit together. A failed settings insert rolls back creation.
+	const results = await input.database.batch<CollectionRow>([
+		creation,
+		input.database
+			.prepare(`insert into collection_mode_settings
+				(collection_id, workspace_id, mode, revision, updated_by_user_id, updated_at)
+				select id, workspace_id, ?2, 1, ?3, ?4 from collections where id = ?1`)
+			.bind(collectionId, mode, input.userId, now),
+	]);
+	const created = results[0]?.results[0] ?? null;
 	if (created === null) {
 		await requireMutableWorkspace(
 			input.database,

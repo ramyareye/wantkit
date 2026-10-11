@@ -2,8 +2,8 @@ import type {
 	ApiErrorCode,
 	CollectionRollupResponse,
 	CollectionBriefInput,
-	CollectionBriefResource,
 	CollectionCreateInput,
+	CollectionModeUpdateInput,
 	CollectionResource,
 	DecisionEventResource,
 	ItemCreateInput,
@@ -14,20 +14,25 @@ import type {
 	ConceptInput,
 	ConceptImageResource,
 	ConceptImageUpdateInput,
-	ConceptMediaResponse,
-	ConceptResource,
 	WorkspaceCreateInput,
 	WorkspaceResource,
 	WorkspaceSummary,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	formatDate,
 	formatMoney,
 	formatNumber,
 	type MessageKey,
-} from "@kharidyar/i18n";
+} from "@wantkit/i18n";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { CollectionModeDialog } from "./CollectionModeDialog";
+import { CollectionResourcePanel } from "./CollectionResourcePanel";
+import {
+	collectionPresenters,
+	type CollectionView,
+} from "./collection-presenters";
+import { useCollectionResource } from "./use-collection-resource";
 import { ProductThumbnail } from "./ProductThumbnail";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { useLocale } from "./locale-context";
@@ -57,6 +62,7 @@ import { ActionMenu, BrandMark, LocaleSwitch, UserAvatar } from "./ui";
 type EditorState =
 	| { kind: "brief-edit" }
 	| { kind: "collection-create" }
+	| { kind: "collection-mode" }
 	| { kind: "collection-edit"; resource: CollectionResource }
 	| { kind: "context-export"; resource: CollectionResource }
 	| { kind: "item-create" }
@@ -529,8 +535,15 @@ function ItemLedger({
 								key={item.id}
 							>
 								<ProductThumbnail
-									src={plans.get(item.id)?.productImageUrl ?? plans.get(item.id)?.previewProduct?.imageUrl}
-									title={plans.get(item.id)?.productTitle ?? plans.get(item.id)?.previewProduct?.title ?? item.title}
+									src={
+										plans.get(item.id)?.productImageUrl ??
+										plans.get(item.id)?.previewProduct?.imageUrl
+									}
+									title={
+										plans.get(item.id)?.productTitle ??
+										plans.get(item.id)?.previewProduct?.title ??
+										item.title
+									}
 								/>
 								<div className="item-row__content">
 									<div className="item-row__meta">
@@ -634,19 +647,9 @@ export function PlanningDashboard({
 	const [comparisonError, setComparisonError] = useState<ApiErrorCode | null>(
 		null,
 	);
-	const [collectionRollup, setCollectionRollup] =
-		useState<CollectionRollupResponse | null>(null);
-	const [brief, setBrief] = useState<CollectionBriefResource | null>(null);
-	const [concept, setConcept] = useState<ConceptResource | null>(null);
-	const [conceptMedia, setConceptMedia] = useState<ConceptMediaResponse | null>(
-		null,
-	);
-	const [canEditBrief, setCanEditBrief] = useState(false);
-	const [canEditConcept, setCanEditConcept] = useState(false);
 	const [workspacePhase, setWorkspacePhase] = useState<LoadPhase>("loading");
 	const [collectionPhase, setCollectionPhase] = useState<LoadPhase>("idle");
 	const [itemPhase, setItemPhase] = useState<LoadPhase>("idle");
-	const [directionPhase, setDirectionPhase] = useState<LoadPhase>("idle");
 	const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<null | string>(
 		() => selectionFromLocation("workspace"),
 	);
@@ -654,9 +657,59 @@ export function PlanningDashboard({
 		null | string
 	>(() => selectionFromLocation("collection"));
 	const [showArchived, setShowArchived] = useState(false);
-	const [collectionView, setCollectionView] = useState<
-		"items" | "direction" | "floorPlans" | "budget"
-	>("items");
+	const [viewSelection, setViewSelection] = useState<{
+		collectionId: string | null;
+		view: CollectionView;
+	}>({ collectionId: selectedCollectionId, view: "items" });
+	const collectionView =
+		viewSelection.collectionId === selectedCollectionId
+			? viewSelection.view
+			: "items";
+	function setCollectionView(view: CollectionView) {
+		setViewSelection({ collectionId: selectedCollectionId, view });
+	}
+	const modeState = useCollectionResource(
+		api.readCollectionMode,
+		selectedCollectionId,
+	);
+	const rollupState = useCollectionResource(
+		api.readCollectionRollup,
+		selectedCollectionId,
+	);
+	const briefState = useCollectionResource(
+		api.readCollectionBrief,
+		selectedCollectionId,
+		collectionView === "direction",
+	);
+	const conceptState = useCollectionResource(
+		api.readConcept,
+		selectedCollectionId,
+		collectionView === "direction",
+	);
+	const mediaState = useCollectionResource(
+		api.readConceptMedia,
+		selectedCollectionId,
+		collectionView === "direction",
+	);
+	const collectionRollup = rollupState.data;
+	const brief = briefState.data?.resource ?? null;
+	const concept = conceptState.data?.resource ?? null;
+	const conceptMedia = mediaState.data;
+	const canEditBrief =
+		briefState.phase === "ready" && Boolean(briefState.data?.canEdit);
+	const canEditConcept =
+		modeState.data?.settings.source !== "unsupported" &&
+		conceptState.phase === "ready" &&
+		Boolean(conceptState.data?.canEdit);
+	const effectiveMode = modeState.data?.settings.effectiveMode ?? "general";
+	const presenter = collectionPresenters[effectiveMode];
+	const activeCollectionView = presenter.views.includes(collectionView)
+		? collectionView
+		: "items";
+	const [modeSaveError, setModeSaveError] = useState<string | null>(null);
+	useEffect(() => {
+		setModeSaveError(null);
+	}, [selectedCollectionId]);
 	const [itemQuery, setItemQuery] = useState("");
 	const [navigationOpen, setNavigationOpen] = useState(false);
 	const navigationToggleRef = useRef<HTMLButtonElement>(null);
@@ -733,17 +786,10 @@ export function PlanningDashboard({
 		setCollections([]);
 		setItems([]);
 		setItemPermissions(noItemPermissions);
-		setCollectionRollup(null);
-		setBrief(null);
-		setConcept(null);
-		setConceptMedia(null);
-		setCanEditBrief(false);
-		setCanEditConcept(false);
 		setSelectedGroup("all");
 		if (!selectedWorkspaceId) {
 			setCollectionPhase("ready");
 			setItemPhase("ready");
-			setDirectionPhase("ready");
 			return () => {
 				current = false;
 			};
@@ -795,57 +841,28 @@ export function PlanningDashboard({
 		let current = true;
 		setItems([]);
 		setItemPermissions(noItemPermissions);
-		setCollectionRollup(null);
-		setBrief(null);
-		setConcept(null);
-		setConceptMedia(null);
-		setCanEditBrief(false);
-		setCanEditConcept(false);
 		setSelectedGroup("all");
 		if (!selectedCollectionId) {
 			setItemPhase("ready");
-			setDirectionPhase("ready");
 			return () => {
 				current = false;
 			};
 		}
 
 		setItemPhase("loading");
-		setDirectionPhase("loading");
 		setLoadError(null);
-		void Promise.all([
-			api.listItems(selectedCollectionId),
-			api.readCollectionBrief(selectedCollectionId),
-			api.readConcept(selectedCollectionId),
-			api.readConceptMedia(selectedCollectionId),
-			api.readCollectionRollup(selectedCollectionId),
-		])
-			.then(
-				([
-					itemResult,
-					briefResult,
-					conceptResult,
-					mediaResult,
-					rollupResult,
-				]) => {
-					if (!current) return;
-					setItems(itemResult.items);
-					setItemPermissions(itemResult.permissions);
-					setBrief(briefResult.resource);
-					setCanEditBrief(briefResult.canEdit);
-					setConcept(conceptResult.resource);
-					setCanEditConcept(conceptResult.canEdit);
-					setConceptMedia(mediaResult);
-					setCollectionRollup(rollupResult);
-					setItemPhase("ready");
-					setDirectionPhase("ready");
-				},
-			)
+		void api
+			.listItems(selectedCollectionId)
+			.then((result) => {
+				if (!current) return;
+				setItems(result.items);
+				setItemPermissions(result.permissions);
+				setItemPhase("ready");
+			})
 			.catch((error: unknown) => {
 				if (!current) return;
 				setLoadError(apiErrorCode(error));
 				setItemPhase("ready");
-				setDirectionPhase("ready");
 			});
 
 		return () => {
@@ -1069,6 +1086,38 @@ export function PlanningDashboard({
 		);
 	}
 
+	async function saveCollectionMode(value: CollectionModeUpdateInput) {
+		if (!selectedCollectionId) return false;
+		setBusy(true);
+		setModeSaveError(null);
+		try {
+			const response = await api.updateCollectionMode(
+				selectedCollectionId,
+				value,
+			);
+			modeState.replace(response);
+			if (
+				!collectionPresenters[response.settings.effectiveMode].views.includes(
+					collectionView,
+				)
+			)
+				setCollectionView("items");
+			setEditor(null);
+			setToast(t("mode.saved"));
+			return true;
+		} catch (error) {
+			setModeSaveError(
+				apiErrorCode(error) === "CONFLICT"
+					? t("mode.conflict")
+					: errorMessage(error),
+			);
+			modeState.retry();
+			return false;
+		} finally {
+			setBusy(false);
+		}
+	}
+
 	async function createCollection(value: CollectionCreateInput) {
 		if (!selectedWorkspaceId) return false;
 		return mutate(
@@ -1122,10 +1171,7 @@ export function PlanningDashboard({
 		if (!selectedCollectionId) return false;
 		return mutate(
 			() => api.saveCollectionBrief(selectedCollectionId, value),
-			(result) => {
-				setBrief(result.resource);
-				setCanEditBrief(result.canEdit);
-			},
+			briefState.replace,
 			"toast.briefSaved",
 		);
 	}
@@ -1133,15 +1179,10 @@ export function PlanningDashboard({
 	async function saveTextConcept(value: ConceptInput) {
 		if (!selectedCollectionId) return false;
 		return mutate(
-			async () => {
-				const result = await api.saveConcept(selectedCollectionId, value);
-				const media = await api.readConceptMedia(selectedCollectionId);
-				return { media, result };
-			},
-			({ media, result }) => {
-				setConcept(result.resource);
-				setCanEditConcept(result.canEdit);
-				setConceptMedia(media);
+			() => api.saveConcept(selectedCollectionId, value),
+			(result) => {
+				conceptState.replace(result);
+				mediaState.retry();
 			},
 			"toast.conceptSaved",
 		);
@@ -1153,9 +1194,8 @@ export function PlanningDashboard({
 		await mutate(
 			() => api.removeConcept(selectedCollectionId),
 			(result) => {
-				setConcept(result.resource);
-				setCanEditConcept(result.canEdit);
-				setConceptMedia(null);
+				conceptState.replace(result);
+				mediaState.retry();
 			},
 			"toast.conceptRemoved",
 		);
@@ -1165,7 +1205,7 @@ export function PlanningDashboard({
 		if (!selectedCollectionId) return false;
 		return mutate(
 			() => api.uploadConceptImage(selectedCollectionId, value),
-			setConceptMedia,
+			mediaState.replace,
 			"toast.mediaUploaded",
 			false,
 		);
@@ -1177,7 +1217,7 @@ export function PlanningDashboard({
 	) {
 		return mutate(
 			() => api.updateConceptImage(imageId, value),
-			setConceptMedia,
+			mediaState.replace,
 			"toast.mediaUpdated",
 			false,
 		);
@@ -1187,7 +1227,7 @@ export function PlanningDashboard({
 		if (!selectedCollectionId) return false;
 		return mutate(
 			() => api.reorderConceptReferences(selectedCollectionId, { imageIds }),
-			setConceptMedia,
+			mediaState.replace,
 			"toast.mediaReordered",
 			false,
 		);
@@ -1196,7 +1236,7 @@ export function PlanningDashboard({
 	async function deleteConceptImage(image: ConceptImageResource) {
 		await mutate(
 			() => api.deleteConceptImage(image.id),
-			setConceptMedia,
+			mediaState.replace,
 			"toast.mediaDeleted",
 			false,
 		);
@@ -1236,12 +1276,7 @@ export function PlanningDashboard({
 	) {
 		setComparison(value);
 		setToast(toastMessage);
-		if (selectedCollectionId) {
-			void api
-				.readCollectionRollup(selectedCollectionId)
-				.then(setCollectionRollup)
-				.catch((error: unknown) => setActionError(errorMessage(error)));
-		}
+		rollupState.retry();
 	}
 
 	async function changeItemStatus(value: ItemStatusChangeInput) {
@@ -1580,6 +1615,33 @@ export function PlanningDashboard({
 														{t("collection.singular")}
 													</p>
 													<h1 dir="auto">{selectedCollection.name}</h1>
+													<div className="collection-mode-label">
+														{modeState.data?.permissions.canEdit ? (
+															<button
+																type="button"
+																className="mode-button"
+																disabled={busy || modeState.phase !== "ready"}
+																aria-label={`${t("mode.settingsTitle")}: ${t(presenter.label)}`}
+																onClick={() => {
+																	setModeSaveError(null);
+																	setEditor({ kind: "collection-mode" });
+																}}
+															>
+																{t(presenter.label)}{" "}
+																<span aria-hidden="true">⌄</span>
+															</button>
+														) : (
+															<span>
+																{modeState.data
+																	? t(presenter.label)
+																	: t(
+																			modeState.phase === "error"
+																				? "mode.label"
+																				: "mode.loading",
+																		)}
+															</span>
+														)}
+													</div>
 													{selectedCollection.description ? (
 														<p dir="auto">{selectedCollection.description}</p>
 													) : null}
@@ -1663,26 +1725,36 @@ export function PlanningDashboard({
 												</div>
 											</header>
 
+											{modeState.phase === "error" ? (
+												<CollectionResourcePanel
+													status={modeState}
+													label={t("mode.label")}
+												>
+													{null}
+												</CollectionResourcePanel>
+											) : null}
+											{modeState.data?.settings.source === "unsupported" ? (
+												<p className="collection-panel-notice" role="status">
+													{t("mode.unsupported")}
+												</p>
+											) : null}
 											<nav
 												className="collection-views"
 												aria-label={t("nav.collectionViews")}
 											>
-												{(
-													[
-														"items",
-														"direction",
-														"floorPlans",
-														"budget",
-													] as const
-												).map((view) => (
+												{presenter.views.map((view) => (
 													<button
 														key={view}
 														type="button"
-														aria-pressed={collectionView === view}
+														aria-pressed={activeCollectionView === view}
 														aria-controls={`collection-panel-${view}`}
 														onClick={() => setCollectionView(view)}
 													>
-														{t(`nav.view.${view}`)}
+														{t(
+															view === "direction"
+																? presenter.directionLabel
+																: `nav.view.${view}`,
+														)}
 														{view === "items" ? (
 															<span>
 																{formatNumber(locale, activeItems.length)}
@@ -1693,10 +1765,10 @@ export function PlanningDashboard({
 											</nav>
 											<section
 												id="collection-panel-floorPlans"
-												hidden={collectionView !== "floorPlans"}
+												hidden={activeCollectionView !== "floorPlans"}
 												aria-label={t("nav.view.floorPlans")}
 											>
-												{collectionView === "floorPlans" ? (
+												{activeCollectionView === "floorPlans" ? (
 													<FloorPlans
 														key={selectedCollection.id}
 														collectionId={selectedCollection.id}
@@ -1705,8 +1777,8 @@ export function PlanningDashboard({
 											</section>
 											<section
 												id="collection-panel-direction"
-												hidden={collectionView !== "direction"}
-												aria-label={t("nav.view.direction")}
+												hidden={activeCollectionView !== "direction"}
+												aria-label={t(presenter.directionLabel)}
 											>
 												<CollectionDirection
 													brief={brief}
@@ -1719,7 +1791,9 @@ export function PlanningDashboard({
 													}
 													concept={concept}
 													media={conceptMedia}
-													loading={directionPhase !== "ready"}
+													briefStatus={briefState}
+													conceptStatus={conceptState}
+													mediaStatus={mediaState}
 													onEditBrief={() => setEditor({ kind: "brief-edit" })}
 													onEditConcept={() =>
 														setEditor({ kind: "concept-edit" })
@@ -1733,22 +1807,35 @@ export function PlanningDashboard({
 											</section>
 											<section
 												id="collection-panel-budget"
-												hidden={collectionView !== "budget"}
+												hidden={activeCollectionView !== "budget"}
 												aria-label={t("nav.view.budget")}
 											>
-												{collectionRollup ? (
-													<CollectionCostSummary rollup={collectionRollup} />
-												) : (
-													<p className="section-empty">
-														{t("nav.budgetEmpty")}
-													</p>
-												)}
+												<CollectionResourcePanel
+													status={rollupState}
+													label={t("nav.view.budget")}
+												>
+													{collectionRollup ? (
+														<CollectionCostSummary rollup={collectionRollup} />
+													) : (
+														<p className="section-empty">
+															{t("nav.budgetEmpty")}
+														</p>
+													)}
+												</CollectionResourcePanel>
 											</section>
 											<section
 												id="collection-panel-items"
-												hidden={collectionView !== "items"}
+												hidden={activeCollectionView !== "items"}
 												aria-label={t("nav.view.items")}
 											>
+												{rollupState.phase === "error" ? (
+													<CollectionResourcePanel
+														status={rollupState}
+														label={t("nav.view.budget")}
+													>
+														{null}
+													</CollectionResourcePanel>
+												) : null}
 												{viewState === "loading-items" ? (
 													<StatusPanel
 														eyebrow={t("common.loading")}
@@ -1906,6 +1993,18 @@ export function PlanningDashboard({
 					onClose={() => setEditor(null)}
 					onSubmit={updateCollection}
 				/>
+			) : editor?.kind === "collection-mode" && modeState.data ? (
+				<CollectionModeDialog
+					key={selectedCollectionId}
+					response={modeState.data}
+					busy={busy}
+					loading={modeState.phase === "loading"}
+					unavailable={modeState.phase === "error"}
+					onRetry={modeState.retry}
+					error={modeSaveError}
+					onClose={() => setEditor(null)}
+					onSubmit={saveCollectionMode}
+				/>
 			) : editor?.kind === "context-export" ? (
 				<ContextExportDialog
 					api={api}
@@ -1914,6 +2013,7 @@ export function PlanningDashboard({
 				/>
 			) : editor?.kind === "item-create" ? (
 				<ItemForm
+					mode={effectiveMode}
 					busy={busy}
 					onClose={() => setEditor(null)}
 					onSubmit={createItem}
@@ -1979,6 +2079,7 @@ export function PlanningDashboard({
 				/>
 			) : editor?.kind === "item-edit" ? (
 				<ItemForm
+					mode={effectiveMode}
 					busy={busy}
 					initial={editor.resource}
 					onClose={() => setEditor(null)}

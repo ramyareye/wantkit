@@ -7,7 +7,7 @@ import {
   researchWorkflowParamsSchema,
   type ResearchProviderSearchOutput,
   type ResearchWorkflowParams,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 
 import { extractPermittedProductPage } from "./research-browser";
 import {

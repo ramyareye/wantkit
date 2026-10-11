@@ -2,8 +2,8 @@ import type {
 	CommentResource,
 	ItemDiscussionResponse,
 	ItemResource,
-} from "@kharidyar/contracts";
-import { formatDateTime } from "@kharidyar/i18n";
+} from "@wantkit/contracts";
+import { formatDateTime } from "@wantkit/i18n";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { useLocale } from "./locale-context";

@@ -1,3 +1,8 @@
+import {
+	collectionModes,
+	defaultCollectionMode,
+	type CollectionMode,
+} from "@wantkit/domain";
 import type {
 	CollectionCreateInput,
 	CollectionResource,
@@ -5,7 +10,7 @@ import type {
 	ItemResource,
 	WorkspaceCreateInput,
 	WorkspaceSummary,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	useEffect,
 	useId,
@@ -36,12 +41,23 @@ function dialogFocusableElements(dialog: HTMLElement): HTMLElement[] {
 	return Array.from(
 		dialog.querySelectorAll<HTMLElement>(dialogFocusableSelector),
 	).filter((element) => {
-		if (element.getAttribute("aria-hidden") === "true" || element.getClientRects().length === 0) return false;
+		if (
+			element.getAttribute("aria-hidden") === "true" ||
+			element.getClientRects().length === 0
+		)
+			return false;
 		// Closed details can report client rects for descendants. Only their
 		// own summary belongs in the keyboard loop, including nested details.
-		for (let ancestor = element.parentElement; ancestor && ancestor !== dialog; ancestor = ancestor.parentElement) {
-			if (ancestor.tagName !== "DETAILS" || ancestor.hasAttribute("open")) continue;
-			const summary = Array.from(ancestor.children).find((child) => child.tagName === "SUMMARY");
+		for (
+			let ancestor = element.parentElement;
+			ancestor && ancestor !== dialog;
+			ancestor = ancestor.parentElement
+		) {
+			if (ancestor.tagName !== "DETAILS" || ancestor.hasAttribute("open"))
+				continue;
+			const summary = Array.from(ancestor.children).find(
+				(child) => child.tagName === "SUMMARY",
+			);
 			if (!summary?.contains(element)) return false;
 		}
 		return true;
@@ -154,7 +170,9 @@ export function EditorDialog({
 					"editor-dialog",
 					size === "wide" ? "editor-dialog--wide" : "",
 					className,
-				].filter(Boolean).join(" ")}
+				]
+					.filter(Boolean)
+					.join(" ")}
 				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
@@ -186,10 +204,12 @@ export function FormActions({
 	busy,
 	onCancel,
 	submitLabel,
+	submitDisabled = false,
 }: {
 	busy: boolean;
 	onCancel: () => void;
 	submitLabel: string;
+	submitDisabled?: boolean;
 }) {
 	const { t } = useLocale();
 
@@ -203,7 +223,11 @@ export function FormActions({
 			>
 				{t("common.cancel")}
 			</button>
-			<button type="submit" className="button button--primary" disabled={busy}>
+			<button
+				type="submit"
+				className="button button--primary"
+				disabled={busy || submitDisabled}
+			>
 				{busy ? t("common.saving") : submitLabel}
 				<span aria-hidden="true">↗</span>
 			</button>
@@ -285,6 +309,7 @@ export function CollectionForm({
 	onSubmit: (value: CollectionCreateInput) => Promise<boolean>;
 }) {
 	const { t } = useLocale();
+	const [mode, setMode] = useState<CollectionMode>(defaultCollectionMode);
 	const [name, setName] = useState(initial?.name ?? "");
 	const [description, setDescription] = useState(initial?.description ?? "");
 	const [validationError, setValidationError] = useState<string | null>(null);
@@ -299,6 +324,7 @@ export function CollectionForm({
 		await onSubmit({
 			description: description.trim() || null,
 			name,
+			...(!initial ? { mode } : {}),
 		});
 	}
 
@@ -319,7 +345,11 @@ export function CollectionForm({
 						autoFocus
 						value={name}
 						onChange={(event) => setName(event.target.value)}
-						placeholder={t("collection.namePlaceholder")}
+						placeholder={t(
+							mode === "home"
+								? "collection.homeNamePlaceholder"
+								: "collection.namePlaceholder",
+						)}
 						maxLength={120}
 						aria-invalid={Boolean(validationError)}
 					/>
@@ -337,6 +367,25 @@ export function CollectionForm({
 						rows={4}
 					/>
 				</label>
+				{!initial ? (
+					<label className="field">
+						<span className="field__label">{t("mode.label")}</span>
+						<select
+							value={mode}
+							disabled={busy}
+							onChange={(event) =>
+								setMode(event.target.value as CollectionMode)
+							}
+						>
+							{collectionModes.map((value) => (
+								<option key={value} value={value}>
+									{t(`mode.${value}`)}
+								</option>
+							))}
+						</select>
+						<span className="field-hint">{t(`mode.${mode}Description`)}</span>
+					</label>
+				) : null}
 				{validationError ? (
 					<p className="field-error" role="alert">
 						{validationError}
@@ -354,11 +403,13 @@ export function CollectionForm({
 
 export function ItemForm({
 	busy,
+	mode = defaultCollectionMode,
 	initial,
 	onClose,
 	onSubmit,
 }: {
 	busy: boolean;
+	mode?: CollectionMode;
 	initial?: ItemResource;
 	onClose: () => void;
 	onSubmit: (value: ItemCreateInput) => Promise<boolean>;
@@ -433,7 +484,11 @@ export function ItemForm({
 						autoFocus
 						value={title}
 						onChange={(event) => setTitle(event.target.value)}
-						placeholder={t("item.titlePlaceholder")}
+						placeholder={t(
+							mode === "home"
+								? "item.homeTitlePlaceholder"
+								: "item.titlePlaceholder",
+						)}
 						maxLength={200}
 						aria-invalid={Boolean(validationError)}
 					/>

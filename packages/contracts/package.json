@@ -1,9 +1,9 @@
 {
-	"name": "@kharidyar/contracts",
+	"name": "@wantkit/contracts",
 	"version": "0.0.0",
-	"description": "Runtime-independent Kharidyar API contracts",
+	"description": "Runtime-independent WantKit API contracts",
 	"dependencies": {
-		"@kharidyar/domain": "workspace:*",
+		"@wantkit/domain": "workspace:*",
 		"zod": "4.5.4"
 	},
 	"private": true,

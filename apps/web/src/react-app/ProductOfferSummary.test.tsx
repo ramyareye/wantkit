@@ -1,4 +1,4 @@
-import type { CandidateComparison } from "@kharidyar/contracts";
+import type { CandidateComparison } from "@wantkit/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { LocaleProvider } from "./LocaleProvider";

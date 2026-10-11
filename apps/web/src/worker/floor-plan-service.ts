@@ -5,8 +5,8 @@ import {
   type FloorPlanDetails,
   type FloorPlanResource,
   type FloorPlansResponse,
-} from "@kharidyar/contracts";
-import { hasCapability } from "@kharidyar/domain";
+} from "@wantkit/contracts";
+import { hasCapability } from "@wantkit/domain";
 import {
   ApiError,
   badRequest,

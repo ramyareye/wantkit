@@ -1,7 +1,7 @@
 import {
   collectionBriefInputSchema,
   conceptInputSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { Hono } from "hono";
 
 import { jsonContractValidator } from "./contract-validation";

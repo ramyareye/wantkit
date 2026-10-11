@@ -2,7 +2,7 @@ import { requireActiveWriteGrant } from "./mcp-write-grant";
 import {
 	mcpActionReceiptSchema,
 	type McpActionReceipt,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { z } from "zod";
 import { mcpWriteScope } from "../auth/mcp-options";
 import { ApiError, conflict, notFound } from "./api-errors";

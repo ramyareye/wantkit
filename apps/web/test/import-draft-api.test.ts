@@ -4,7 +4,7 @@ import {
 	importDraftListResponseSchema,
 	importDraftResponseSchema,
 	itemComparisonResponseSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { parseImportInput } from "../src/worker/import-draft-parser";

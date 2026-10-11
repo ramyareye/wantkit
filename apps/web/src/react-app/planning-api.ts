@@ -9,6 +9,9 @@ import {
 	collectionBriefResponseSchema,
 	collectionListResponseSchema,
 	collectionResponseSchema,
+	collectionModeResponseSchema,
+	type CollectionModeResponse,
+	type CollectionModeUpdateInput,
 	conceptResponseSchema,
 	conceptMediaResponseSchema,
 	contextSnapshotResponseSchema,
@@ -79,7 +82,7 @@ import {
 	type WorkspaceSummary,
 	type WorkspaceCollaborationResponse,
 	type WorkspaceUpdateInput,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { hc } from "hono/client";
 
 import type { AppType } from "../worker";
@@ -218,6 +221,11 @@ export interface PlanningApi {
 		value: ResearchResultPromotionInput,
 	) => Promise<ResearchDeskResponse>;
 	archiveCollection: (collectionId: string) => Promise<CollectionResource>;
+	readCollectionMode: (collectionId: string) => Promise<CollectionModeResponse>;
+	updateCollectionMode: (
+		collectionId: string,
+		value: CollectionModeUpdateInput,
+	) => Promise<CollectionModeResponse>;
 	archiveItem: (itemId: string) => Promise<ItemResource>;
 	archiveWorkspace: (workspaceId: string) => Promise<WorkspaceResource>;
 	createCollection: (
@@ -836,6 +844,23 @@ export const planningApi: PlanningApi = {
 		});
 		return (await parsedResponse(response, collectionResponseSchema))
 			.collection;
+	},
+
+	async readCollectionMode(collectionId) {
+		return commerceRequest(
+			`/collections/${encodeURIComponent(collectionId)}/mode`,
+			"GET",
+			collectionModeResponseSchema,
+		);
+	},
+
+	async updateCollectionMode(collectionId, value) {
+		return commerceRequest(
+			`/collections/${encodeURIComponent(collectionId)}/mode`,
+			"PATCH",
+			collectionModeResponseSchema,
+			value,
+		);
 	},
 
 	async archiveCollection(collectionId) {

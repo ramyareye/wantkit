@@ -1,0 +1,3 @@
+# Shared planning core with collection modes
+
+WantKit will support General, Home and future Food experiences through one planning core and a mode chosen per Collection, preserving shared identity, membership, Items, Candidates, Products, Offers and human decisions. Separate apps or duplicated backends would fragment collaboration and make future migration harder; specialized workflows should add typed domain rules to the shared foundation instead. The first implementation uses a separate Collection-mode settings resource so existing strict Collection contracts and immutable v1 context snapshots remain readable, with existing Home content preserved during mode changes; see [GENERALIZATION.md](../../GENERALIZATION.md) for the staged rollout and future Food boundary.

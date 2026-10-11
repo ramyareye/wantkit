@@ -2,7 +2,7 @@ import { env, exports } from "cloudflare:workers";
 import {
   collectionContextSchema,
   floorPlansResponseSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   uploadFloorPlan,

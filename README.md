@@ -4,7 +4,7 @@ WantKit is a private, collaborative purchase-planning application. Its current w
 
 The approved product specification, domain model, architecture, and roadmap are in [`PROJECT.md`](./PROJECT.md). Repository workflow and approval rules are in [`AGENTS.md`](./AGENTS.md).
 
-The project name is **WantKit**, the root package is `wantkit`, and workspace packages use `@wantkit/*`. The GitHub repository and local directory still use `kharidyar` pending their separate rename. Existing Cloudflare resource names are retained for deployment continuity; see [`BRANDING.md`](./BRANDING.md) for the remaining rename steps.
+The project name is **WantKit**, the root package is `wantkit`, and workspace packages use `@wantkit/*`. The GitHub repository is [`ramyareye/wantkit`](https://github.com/ramyareye/wantkit); the local directory still uses `kharidyar`. Existing Cloudflare resource names are retained for deployment continuity; see [`BRANDING.md`](./BRANDING.md) for the remaining rename steps.
 
 ## Workspace layout
 

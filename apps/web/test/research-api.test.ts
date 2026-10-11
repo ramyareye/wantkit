@@ -2,7 +2,7 @@ import { env, exports } from "cloudflare:workers";
 import {
   apiErrorResponseSchema,
   researchDeskResponseSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { introspectWorkflow } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 

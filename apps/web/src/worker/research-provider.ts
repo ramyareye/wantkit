@@ -2,7 +2,7 @@ import {
   researchProviderSearchOutputSchema,
   type ResearchConstraints,
   type ResearchProviderSearchOutput,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 
 export const researchProviderId = "tavily-basic-v1" as const;
 

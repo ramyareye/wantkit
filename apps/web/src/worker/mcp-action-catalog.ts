@@ -1,7 +1,8 @@
 import { prepareVisualRun, visualSelection } from "./visual-service";
-import * as c from "@kharidyar/contracts";
+import * as c from "@wantkit/contracts";
 import { z } from "zod";
 import * as core from "./core-workspace-service";
+import * as modes from "./collection-mode-service";
 import * as direction from "./collection-direction-service";
 import * as commerce from "./commerce-service";
 import * as discussion from "./collaboration-experience-service";
@@ -174,6 +175,14 @@ export const mcpActionCatalog = [
 		"collection",
 		(ctx, a) =>
 			core.setCollectionArchived({ ...common(ctx), ...a, archived: true }),
+		true,
+	),
+	action(
+		"update_collection_mode",
+		"Change a collection's General or Home mode",
+		{ ...collection, value: c.collectionModeUpdateInputSchema },
+		"collection",
+		(ctx, a) => modes.updateCollectionMode({ ...common(ctx), ...a }),
 		true,
 	),
 	action(
@@ -713,6 +722,13 @@ export async function actionTarget(
 			...base,
 			collectionId: mcpIdentifier.parse(args.collectionId),
 		});
+		if (definition.name === "update_collection_mode") {
+			const mode = await modes.readCollectionMode({ ...base, collectionId: row.id });
+			if (!mode.permissions.canEdit) throw forbidden();
+			// Target versions invalidate pending approval after a mode edit. Expected
+			// revisions are enforced by the write service, not by receipt reads/replay.
+			return { name: row.name, version: JSON.stringify([row, mode]), confirmationRequired: true };
+		}
 		const extras = definition.name.includes("concept")
 			? await direction.readConcept({ ...base, collectionId: row.id })
 			: null;

@@ -2,7 +2,7 @@ import { env, exports } from "cloudflare:workers";
 import {
 	apiErrorResponseSchema,
 	conceptMediaResponseSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {

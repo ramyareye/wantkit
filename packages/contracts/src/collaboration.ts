@@ -1,4 +1,4 @@
-import { membershipRoles } from "@kharidyar/domain";
+import { membershipRoles } from "@wantkit/domain";
 import { z } from "zod";
 
 const requiredText = (maximumLength: number) =>

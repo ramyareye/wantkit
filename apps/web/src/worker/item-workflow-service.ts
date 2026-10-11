@@ -7,13 +7,13 @@ import {
 	type ItemResource,
 	type ItemStatusChangeInput,
 	type ItemStatusDecisionEvent,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	itemStatusTransition,
 	type DecisionEventKind,
 	type ItemStatus,
 	type ItemStatusTransitionKind,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 
 import { conflict, notFound, resourceArchived } from "./api-errors";
 import { loadCollectionAccess, requireCapability } from "./authorization";

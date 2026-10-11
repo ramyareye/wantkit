@@ -1,4 +1,4 @@
-import type { Locale, MessageKey } from "@kharidyar/i18n";
+import type { Locale, MessageKey } from "@wantkit/i18n";
 import { createContext, useContext } from "react";
 
 type MessageValues = Readonly<Record<string, number | string>>;

@@ -1,7 +1,7 @@
 import {
   localCodexCredentialsSchema,
   localCodexStatusSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useLocale } from "./locale-context";

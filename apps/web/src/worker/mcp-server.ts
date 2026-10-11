@@ -2,6 +2,7 @@ import { registerMcpVisualTools } from "./mcp-visual-tools";
 import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import {
 	collectionContextSchema,
+	collectionModeResponseSchema,
 	floorPlanContextSchema,
 	floorPlanLimits,
 	collectionResourceSchema,
@@ -20,10 +21,11 @@ import {
 	collectionRollupResponseSchema,
 	importDraftListResponseSchema,
 	importDraftResponseSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { z } from "zod";
 
 import { ApiError } from "./api-errors";
+import { readCollectionMode } from "./collection-mode-service";
 import {
 	listCollections,
 	listItems,
@@ -240,6 +242,13 @@ export function createWantkitMcpServer(input: {
 		async (args) => ({
 			collection: await readCollection({ ...input, ...args }),
 		}),
+	);
+	read(
+		"read_collection_mode",
+		"Read one accessible Collection's mode, effective fallback, revision and edit permission. v1 context exports omit mode; read this before mode edits.",
+		z.object({ collectionId: id }).strict(),
+		collectionModeResponseSchema,
+		async (args) => readCollectionMode({ ...input, ...args }),
 	);
 	read(
 		"list_items",

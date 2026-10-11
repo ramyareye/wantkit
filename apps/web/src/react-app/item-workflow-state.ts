@@ -1,12 +1,12 @@
 import type {
 	ItemPermissions,
 	ItemPlanningSnapshot,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	itemStatuses,
 	itemStatusTransition,
 	type ItemStatus,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 
 export const itemSnapshotFields = [
 	"title",

@@ -6,9 +6,9 @@ import type {
 	ConceptImageUpdateInput,
 	ConceptImageUploadMetadata,
 	ConceptMediaResponse,
-} from "@kharidyar/contracts";
-import { conceptImageUploadMetadataSchema } from "@kharidyar/contracts";
-import { hasCapability } from "@kharidyar/domain";
+} from "@wantkit/contracts";
+import { conceptImageUploadMetadataSchema } from "@wantkit/contracts";
+import { hasCapability } from "@wantkit/domain";
 
 import {
 	badRequest,

@@ -25,7 +25,7 @@ import {
 	type PurchaseSnapshot,
 	type RollupLine,
 	type RollupSummary,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	aggregatePlannedCosts,
 	calculatePlannedCost,
@@ -38,7 +38,7 @@ import {
 	type OfferPriceKind,
 	type PlannedCost,
 	type ShippingBasis,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 
 import { conflict, forbidden, notFound, resourceArchived } from "./api-errors";
 import {

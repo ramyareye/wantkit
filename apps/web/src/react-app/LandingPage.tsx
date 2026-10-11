@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { formatMoney } from "@kharidyar/i18n";
+import { formatMoney } from "@wantkit/i18n";
 import { useLocale } from "./locale-context";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { BrandMark, LocaleSwitch } from "./ui";

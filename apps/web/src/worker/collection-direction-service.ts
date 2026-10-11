@@ -3,8 +3,8 @@ import type {
   CollectionBriefResource,
   ConceptInput,
   ConceptResource,
-} from "@kharidyar/contracts";
-import { hasCapability, type Capability } from "@kharidyar/domain";
+} from "@wantkit/contracts";
+import { hasCapability, type Capability } from "@wantkit/domain";
 
 import { conflict, notFound, resourceArchived } from "./api-errors";
 import {

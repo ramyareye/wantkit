@@ -4,14 +4,18 @@ import {
 	isLocale,
 	message,
 	type Locale,
-} from "@kharidyar/i18n";
+} from "@wantkit/i18n";
 
-export const localeStorageKey = "kharidyar.locale";
+export const localeStorageKey = "wantkit.locale";
+const legacyLocaleStorageKey = "kharidyar.locale";
 
 export function readStoredLocale(): Locale | null {
 	try {
 		const value = window.localStorage.getItem(localeStorageKey);
-		return isLocale(value) ? value : null;
+		if (isLocale(value)) return value;
+		// Preserve existing language choices; LocaleProvider saves the new key.
+		const legacyValue = window.localStorage.getItem(legacyLocaleStorageKey);
+		return isLocale(legacyValue) ? legacyValue : null;
 	} catch {
 		return null;
 	}

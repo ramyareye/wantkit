@@ -1,4 +1,12 @@
-# Handoff: WantKit source rename complete locally
+# Handoff: remaining WantKit checkpoint prepared
+
+Updated 2026-10-12 (Europe/Amsterdam). The user pushed partial commit `d02a166ecb43843989ca2ecb1e0d5aaae7541f9f` and manually renamed GitHub to `ramyareye/wantkit`. Verified `origin` and remote `main` at that exact SHA. Keep working in `/Users/reza/Documents/web/kharidyar` on `main`. GitHub CLI was restored to the user's preferred `rezababaeicelebratix` account; do not switch it for personal repository administration.
+
+- **Scope:** finish the remaining WantKit imports/manifests/lockfile, locale compatibility and General/Home mode source, migration/snapshot, UI/API/MCP tests and previously untracked planning/audit history. The earlier partial commit already contains the migration journal, schema export, some mode UI and initial rename files, so the remaining feature files belong with this completion checkpoint. README/BRANDING now record the completed GitHub rename. No new product feature was implemented during preparation.
+- **Validation:** reuse the recorded successful TypeScript, lint and 348-test run for unchanged source. Compare source bytes with the earlier validated rename state; review the generated snapshot as an additive single-table change and retain its SQL migration. Build and deployment remain separate approvals; do not release before Generalization task 3 and the preview-first release gate.
+- **State / next:** prepare and review the exact staged tree, then obtain one-commit approval. After committing, verify remote state and obtain separate approval for the exact commit SHA pushed to `origin/main`. No assistant commit/push/deployment has occurred at this checkpoint. Remaining folder and infrastructure renames are deferred.
+
+## Previous checkpoint: WantKit source rename complete locally
 
 Updated 2026-10-12 (Europe/Amsterdam). User chose WantKit for the full project name and plans to rename the GitHub repository later. Applied source changes in `/Users/reza/Documents/web/kharidyar` on `main`; existing collection-mode and documentation work is preserved.
 

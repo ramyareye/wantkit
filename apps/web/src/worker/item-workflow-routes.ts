@@ -1,4 +1,4 @@
-import { itemStatusChangeInputSchema } from "@kharidyar/contracts";
+import { itemStatusChangeInputSchema } from "@wantkit/contracts";
 import { Hono } from "hono";
 
 import { jsonContractValidator } from "./contract-validation";

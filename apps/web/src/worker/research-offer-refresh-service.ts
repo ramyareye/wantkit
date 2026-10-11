@@ -1,7 +1,7 @@
 import {
   priceCheckInputSchema,
   type ItemComparisonResponse,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import type { BrowserWorker } from "@cloudflare/playwright";
 
 import { badRequest, notFound, resourceArchived } from "./api-errors";

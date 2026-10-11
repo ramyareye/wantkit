@@ -10,7 +10,7 @@ import {
 	itemWorkflowResponseSchema,
 	workspaceListResponseSchema,
 	workspaceResponseSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { hc } from "hono/client";
 import { beforeEach, describe, expect, it } from "vitest";
 

@@ -5,7 +5,7 @@ import {
 	visualLimits,
 	visualRunResultSchema,
 	visualImageResultSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import type { McpActor } from "./mcp-auth-service";
 import { requireActiveWriteGrant } from "./mcp-write-grant";
 import { loadCollectionAccess, requireCapability } from "./authorization";

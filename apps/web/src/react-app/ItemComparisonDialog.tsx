@@ -11,12 +11,12 @@ import type {
 	PlannedSelectionInput,
 	ProductUpdateInput,
 	PurchaseRecordInput,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	formatMoney,
 	formatNumber,
 	type MessageKey,
-} from "@kharidyar/i18n";
+} from "@wantkit/i18n";
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import {

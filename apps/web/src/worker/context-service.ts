@@ -8,7 +8,7 @@ import {
 	type CollectionContext,
 	type ContextSnapshotResource,
 	type ItemResource,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	isOfferStale,
 	type AvailabilityState,
@@ -18,7 +18,7 @@ import {
 	type MerchantSalesChannel,
 	type OfferPriceKind,
 	type ShippingBasis,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 
 import { conflict, notFound } from "./api-errors";
 import { loadCollectionAccess, requireCapability } from "./authorization";

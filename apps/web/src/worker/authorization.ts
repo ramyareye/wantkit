@@ -4,7 +4,7 @@ import {
 	type AuthorizationTarget,
 	type Capability,
 	type MembershipGrant,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 
 import { forbidden, notFound } from "./api-errors";
 

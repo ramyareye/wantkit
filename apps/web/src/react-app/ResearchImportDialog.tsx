@@ -3,13 +3,13 @@ import {
 	type CollectionResource,
 	type ImportDraftResource,
 	type ImportWarningCode,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	formatDateTime,
 	formatMoney,
 	formatNumber,
 	type MessageKey,
-} from "@kharidyar/i18n";
+} from "@wantkit/i18n";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { useLocale } from "./locale-context";

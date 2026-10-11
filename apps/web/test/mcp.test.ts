@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import app from "../src/worker";
 import { authenticateMcpRequest, connectorInputSchema } from "../src/worker/mcp-auth-service";
-import { visualRunResultSchema, visualImageResultSchema } from "@kharidyar/contracts";
+import { visualRunResultSchema, visualImageResultSchema } from "@wantkit/contracts";
 
 const origin = "http://localhost:5173";
 const owner = "mcp-owner";
@@ -193,7 +193,7 @@ beforeEach(async () => {
 		env.DB.prepare("delete from visual_runs where collection_id like 'mcp-%'"),
  env.DB.prepare("delete from concept_images where role='edited' and concept_id in (select id from concepts where collection_id like 'mcp-%')"),
 		env.DB.prepare("delete from floor_plans where collection_id like 'mcp-%'"),
-		env.DB.prepare("delete from workspaces where id like 'mcp-%'"),
+		env.DB.prepare("delete from workspaces where id like 'mcp-%' or created_by_user_id like 'mcp-%'"),
 		env.DB.prepare("delete from user where id like 'mcp-%'"),
 		env.DB.prepare("delete from collaboration_rate_limits"),
 		env.DB.prepare("delete from rate_limit"),
@@ -2551,5 +2551,57 @@ describe("assistant grant and receipt rechecks", () => {
 		);
 		expect(replay.response.body.result?.isError).toBe(true);
 		expect((await approveAction(created.receipt!.id)).status).toBe(404);
+	});
+});
+
+describe("collection modes through MCP", () => {
+	it("reads legacy modes within scope and defaults old-client creates to General", async () => {
+		const c = await connect(owner, true);
+		const legacy = await call(c.access_token, "read_collection_mode", { collectionId: "mcp-collection-a" });
+		expect(legacy.body.result?.structuredContent).toMatchObject({ settings: { source: "legacy", effectiveMode: "home", revision: 0 }, permissions: { canEdit: true } });
+		const created = await writeCall(c.access_token, "create_collection", { workspaceId: "mcp-workspace-a", value: { name: "General shortlist" } });
+		expect(created.receipt?.status, created.response.text).toBe("succeeded");
+		const record = z.object({ id: z.string() }).parse(created.receipt!.result);
+		const mode = await call(c.access_token, "read_collection_mode", { collectionId: record.id });
+		expect(mode.body.result?.structuredContent).toMatchObject({ settings: { mode: "general", revision: 1 } });
+		const scoped = await connect(viewer);
+		expect((await call(scoped.access_token, "read_collection_mode", { collectionId: "mcp-hidden" })).body.result?.isError).toBe(true);
+		expect((await call(scoped.access_token, "read_collection_mode", { collectionId: "mcp-collection-a" })).body.result?.structuredContent).toMatchObject({ permissions: { canEdit: false } });
+	});
+
+	it("requires approval for mode edits, shares REST revisions, and replays only the receipt", async () => {
+		const c = await connect(owner, true);
+		const operationId = crypto.randomUUID();
+		const args = { collectionId: "mcp-collection-a", value: { mode: "general", expectedRevision: 0 } };
+		const pending = await writeCall(c.access_token, "update_collection_mode", args, operationId);
+		expect(pending.receipt?.status, pending.response.text).toBe("pending");
+		expect(await env.DB.prepare("select count(*) as n from collection_mode_settings").first("n")).toBe(0);
+		const approved = await approveAction(pending.receipt!.id);
+		expect(await approved.json()).toMatchObject({ status: "succeeded", result: { settings: { mode: "general", revision: 1 } } });
+		const rest = await request("/api/collections/mcp-collection-a/mode", undefined, owner);
+		expect(await rest.json()).toMatchObject({ settings: { mode: "general", revision: 1 } });
+		const replay = await writeCall(c.access_token, "update_collection_mode", args, operationId);
+		expect(replay.receipt?.status).toBe("succeeded");
+		expect((await call(c.access_token, "read_action_receipt", { actionId: pending.receipt!.id })).body.result?.structuredContent).toMatchObject({ status: "succeeded" });
+		expect(await env.DB.prepare("select revision from collection_mode_settings where collection_id='mcp-collection-a'").first("revision")).toBe(1);
+		const stale = await writeCall(c.access_token, "update_collection_mode", args);
+		expect(stale.receipt?.status).toBe("pending");
+		expect(await (await approveAction(stale.receipt!.id)).json()).toMatchObject({ status: "failed" });
+	});
+
+	it("rejects a pending approval after a REST edit or permission revocation", async () => {
+		const c = await connect(owner, true);
+		const args = { collectionId: "mcp-collection-a", value: { mode: "general", expectedRevision: 0 } };
+		const pending = await writeCall(c.access_token, "update_collection_mode", args);
+		expect(pending.receipt?.status).toBe("pending");
+		const rest = await request("/api/collections/mcp-collection-a/mode", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode: "home", expectedRevision: 0 }) }, owner);
+		expect(rest.status).toBe(200);
+		expect((await approveAction(pending.receipt!.id)).status).toBe(409);
+		expect(await env.DB.prepare("select mode from collection_mode_settings where collection_id='mcp-collection-a'").first("mode")).toBe("home");
+		const next = await writeCall(c.access_token, "update_collection_mode", { ...args, value: { mode: "general", expectedRevision: 1 } });
+		expect(next.receipt?.status).toBe("pending");
+		await env.DB.prepare("update workspace_memberships set role='contributor' where id='mcp-membership-a'").run();
+		expect((await approveAction(next.receipt!.id)).status).toBe(403);
+		expect(await env.DB.prepare("select revision from collection_mode_settings where collection_id='mcp-collection-a'").first("revision")).toBe(1);
 	});
 });

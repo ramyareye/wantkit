@@ -4,8 +4,8 @@ import type {
   CollectionBriefResource,
   ConceptInput,
   ConceptResource,
-} from "@kharidyar/contracts";
-import { inputHexColorPattern } from "@kharidyar/domain";
+} from "@wantkit/contracts";
+import { inputHexColorPattern } from "@wantkit/domain";
 import {
   useState,
   type Dispatch,

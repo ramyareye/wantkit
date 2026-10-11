@@ -6,7 +6,7 @@ import {
 	type ImportReconciliation,
 	type ImportSourceKind,
 	type ImportWarning,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 
 export const importParserVersion = "deterministic-v2";
 

@@ -1,4 +1,4 @@
-import type { ProductAttribute } from "@kharidyar/contracts";
+import type { ProductAttribute } from "@wantkit/contracts";
 import { safeProductLink } from "./product-presentation";
 import "./ProductAttributes.css";
 

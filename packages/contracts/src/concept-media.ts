@@ -2,7 +2,7 @@ import {
 	conceptImageRoles,
 	conceptSubjectKinds,
 	uploadableConceptImageRoles,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 import { z } from "zod";
 import { visualProvenanceSchema } from "./visuals";
 

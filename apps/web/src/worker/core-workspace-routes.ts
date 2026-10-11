@@ -7,7 +7,7 @@ import {
 	itemUpdateInputSchema,
 	workspaceCreateInputSchema,
 	workspaceUpdateInputSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { Hono } from "hono";
 
 import {

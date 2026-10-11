@@ -2,7 +2,7 @@ import {
   researchConstraintsSchema,
   type LocalCodexCompletion,
   type ResearchRequestCreateInput,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { conflict, notFound } from "./api-errors";
 import {
   localToken,

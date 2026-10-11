@@ -1,5 +1,5 @@
 import { env, exports } from "cloudflare:workers";
-import { hasCapability, type MembershipRole } from "@kharidyar/domain";
+import { hasCapability, type MembershipRole } from "@wantkit/domain";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { loadCollectionAccess } from "../src/worker/authorization";

@@ -1,5 +1,5 @@
-import type { CandidateComparison, OfferResource } from "@kharidyar/contracts";
-import { formatDateTime, formatMoney, formatNumber } from "@kharidyar/i18n";
+import type { CandidateComparison, OfferResource } from "@wantkit/contracts";
+import { formatDateTime, formatMoney, formatNumber } from "@wantkit/i18n";
 import { useLocale } from "./locale-context";
 import { ProductAttributes } from "./ProductAttributes";
 import { safeProductLink } from "./product-presentation";

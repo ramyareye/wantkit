@@ -6,13 +6,13 @@ import type {
 	CommentResource,
 	ItemDiscussionResponse,
 	WorkspaceCollaborationResponse,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	hasCapability,
 	isMembershipRole,
 	type Capability,
 	type MembershipRole,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 
 import { forbidden, notFound, resourceArchived } from "./api-errors";
 import {

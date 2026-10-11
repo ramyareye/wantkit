@@ -6,14 +6,14 @@ import type {
 	ItemResource,
 	ItemStatusChangeInput,
 	RollupLine,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	formatDate,
 	formatDateTime,
 	formatMoney,
 	formatNumber,
 	type MessageKey,
-} from "@kharidyar/i18n";
+} from "@wantkit/i18n";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import {

@@ -1,4 +1,6 @@
 import { floorPlanContextSchema, floorPlanLimits } from "./floor-plans";
+import { collectionModeSchema } from "./collection-mode";
+export * from "./collection-mode";
 export * from "./floor-plans";
 import {
   decisionEventKinds,
@@ -6,7 +8,7 @@ import {
   itemPriorities,
   itemStatuses,
   itemStatusTransitionKinds,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 import { z } from "zod";
 
 import {
@@ -145,10 +147,12 @@ export const collectionCreateInputSchema = z
 	.object({
 		name: requiredTrimmedText(120),
 		description: nullableTrimmedText(2_000).optional(),
+		mode: collectionModeSchema.optional(),
 	})
 	.strict();
 
 export const collectionUpdateInputSchema = collectionCreateInputSchema
+	.omit({ mode: true })
 	.partial()
 	.refine(nonEmptyPatch, { message: "At least one field is required." });
 

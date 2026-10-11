@@ -1,4 +1,4 @@
-import { visualLimits, type VisualImport } from "@kharidyar/contracts";
+import { visualLimits, type VisualImport } from "@wantkit/contracts";
 import { ApiError } from "./api-errors";
 
 type DownloadUrlRejection =

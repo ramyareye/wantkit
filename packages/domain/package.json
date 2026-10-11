@@ -1,7 +1,7 @@
 {
-	"name": "@kharidyar/domain",
+	"name": "@wantkit/domain",
 	"version": "0.0.0",
-	"description": "Runtime-independent Kharidyar domain rules and types",
+	"description": "Runtime-independent WantKit domain rules and types",
 	"private": true,
 	"scripts": {
 		"test": "vitest run"

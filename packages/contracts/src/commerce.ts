@@ -3,7 +3,7 @@ import {
 	merchantSalesChannels,
 	offerPriceKinds,
 	shippingBases,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 import { z } from "zod";
 
 const maximumSafeInteger = Number.MAX_SAFE_INTEGER;

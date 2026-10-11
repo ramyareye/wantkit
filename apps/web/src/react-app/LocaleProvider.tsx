@@ -2,7 +2,7 @@ import {
 	directionForLocale,
 	message,
 	type Locale,
-} from "@kharidyar/i18n";
+} from "@wantkit/i18n";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { LocaleContext, type LocaleContextValue } from "./locale-context";

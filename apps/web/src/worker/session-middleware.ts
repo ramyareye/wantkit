@@ -2,7 +2,7 @@ import { createMiddleware } from "hono/factory";
 
 import {
 	createAuth,
-	type KharidyarSession,
+	type WantKitSession,
 } from "../auth/server";
 
 export interface WorkerAppEnv {
@@ -10,7 +10,7 @@ export interface WorkerAppEnv {
 	Variables: {
 		actorId?: string;
 		requestId: string;
-		session: KharidyarSession;
+		session: WantKitSession;
 	};
 }
 

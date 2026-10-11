@@ -2,7 +2,7 @@ import {
 	canManageMembershipRole,
 	isMembershipRole,
 	type MembershipRole,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 import { Hono } from "hono";
 
 import { readAuthRuntimeConfig } from "../auth/server";

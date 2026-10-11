@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type {
 	ItemPermissions,
 	ItemPlanningSnapshot,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import {
 	availableItemStatuses,
 	changedItemSnapshotFields,
