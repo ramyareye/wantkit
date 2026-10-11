@@ -134,5 +134,5 @@ export function createAuth(bindings: AuthBindings) {
 	});
 }
 
-export type KharidyarAuth = ReturnType<typeof createAuth>;
-export type KharidyarSession = KharidyarAuth["$Infer"]["Session"];
+export type WantKitAuth = ReturnType<typeof createAuth>;
+export type WantKitSession = WantKitAuth["$Infer"]["Session"];

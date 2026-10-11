@@ -24,6 +24,8 @@ Release verification: fresh full checks and both preserved-config deployment dry
 
 ## Future modes — agreed direction, not implementation
 
+2026-10-04 follow-up: the user confirmed this as the broader WantKit redesign. The shared model, neutral navigation, Home composition and migration plan are now documented in [GENERALIZATION.md](./GENERALIZATION.md). Runtime implementation has not started. “Optional” refers to a user choosing a Collection mode; the broader redesign is the intended project direction. Food implementation remains later work.
+
 User-confirmed direction, 2026-10-03: General is the default; Home is an optional preset using existing room, furniture, measurement and floor-plan features; Food is a future specialised mode. Choose modes per collection, so one workspace can contain home plans, groceries and general purchases. Mode selection should be optional and should not block creating a collection. Keep one shared planning core; tech and gifts may become presets if useful. Introduce specialised rules only when the workflow needs them. This decision is recorded for future implementation; no mode selector or food workflow has been built.
 
 Reuse the shared core before copying the app or creating another repository. Collections, needs, quantities, offers, sharing and recorded purchases could support a basic household grocery list today. This is an architectural proposal, not a completed food workflow.

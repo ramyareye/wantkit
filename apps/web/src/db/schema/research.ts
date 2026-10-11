@@ -2,7 +2,7 @@ import {
   researchExtractionStatuses,
   researchResultStatuses,
   researchRunStatuses,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 import { sql } from "drizzle-orm";
 import {
   check,

@@ -1,8 +1,8 @@
 import type {
 	CollectionResource,
 	ContextSnapshotResource,
-} from "@kharidyar/contracts";
-import { formatDateTime, formatNumber } from "@kharidyar/i18n";
+} from "@wantkit/contracts";
+import { formatDateTime, formatNumber } from "@wantkit/i18n";
 import { useState } from "react";
 
 import { useLocale } from "./locale-context";

@@ -2,8 +2,8 @@ import type {
 	ConceptImageResource,
 	ConceptImageUpdateInput,
 	ConceptMediaResponse,
-} from "@kharidyar/contracts";
-import { formatNumber } from "@kharidyar/i18n";
+} from "@wantkit/contracts";
+import { formatNumber } from "@wantkit/i18n";
 import { useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useLocale } from "./locale-context";

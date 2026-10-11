@@ -1,6 +1,6 @@
-# Purchase Planning
+# WantKit Planning
 
-Kharidyar is a private collaborative context for turning purchase needs into explicit, evidence-backed plans without confusing a need, a product, a seller listing, or a completed purchase.
+WantKit is a private collaborative context for turning needs into explicit, evidence-backed purchase plans. General, Home, and future Food workflows share the distinction between a need, a product, a seller listing, and a completed purchase.
 
 ## Organization
 
@@ -9,15 +9,27 @@ The private collaboration boundary that contains members and Collections.
 _Avoid_: Account, team, project
 
 **Collection**:
-A coherent purchase-planning effort inside one Workspace, such as a new home or sport wardrobe.
+A coherent planning effort inside one Workspace, such as furnishing a room, choosing equipment, or preparing a household shopping list.
 _Avoid_: Project, board, folder
 
+**Collection Mode**:
+The planning experience chosen for one Collection: General, Home, or a future specialized workflow such as Food. It shapes relevant tools and guidance while the Collection keeps its identity and membership.
+_Avoid_: Mood, separate app, permission level, product category
+
+**General**:
+The default Collection Mode for planning purchases without a specialized workflow.
+_Avoid_: Empty mode, generic task manager
+
+**Home**:
+A Collection Mode that adds useful home-planning guidance, visual direction, layouts, and measurements to shared purchase planning.
+_Avoid_: Workspace type, separate home app
+
 **Collection Brief**:
-The Collection's shared goals, constraints, preferences, color direction, and optional budget.
+The Collection's shared goals, constraints, preferences, and optional budget. Visual or specialized preferences are supplementary to that shared brief.
 _Avoid_: Requirements document, profile
 
 **Concept**:
-The optional visual and experiential direction within a Collection Brief; it is text-only in the collaborative MVP.
+The optional visual and experiential direction associated with a Collection's plan.
 _Avoid_: Topic, mood board, Collection
 
 **Group Label**:

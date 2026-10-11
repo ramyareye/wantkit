@@ -1,7 +1,7 @@
 import { ThemeSwitch } from "./ThemeSwitch";
 import { useEffect, useRef, useState } from "react";
-import type { InvitationPreviewResponse } from "@kharidyar/contracts";
-import { formatDateTime, type MessageKey } from "@kharidyar/i18n";
+import type { InvitationPreviewResponse } from "@wantkit/contracts";
+import { formatDateTime, type MessageKey } from "@wantkit/i18n";
 import { authClient } from "./auth-client";
 import { invitationApi, PlanningApiError } from "./planning-api";
 import {

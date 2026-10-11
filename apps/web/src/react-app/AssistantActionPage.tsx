@@ -3,14 +3,15 @@ import { useEffect, useState } from "react";
 import {
 	mcpActionReceiptSchema,
 	mcpActionReviewSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { z } from "zod";
-import { formatMoney, type MessageKey } from "@kharidyar/i18n";
+import { formatMoney, type MessageKey } from "@wantkit/i18n";
 import { BrandMark, LocaleSwitch } from "./ui";
 import { useLocale } from "./locale-context";
 import "./ConnectorsPage.css";
 
 const actionTitles: Partial<Record<string, MessageKey>> = {
+	update_collection_mode: "assistantAction.operation.update_collection_mode",
 	prepare_visual_edit: "assistantAction.operation.prepare_visual_edit",
 	update_concept_image: "assistantAction.operation.update_concept_image",
 	delete_floor_plan: "assistantAction.operation.delete_floor_plan",

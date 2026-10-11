@@ -1,4 +1,4 @@
-import type { CandidateComparison, ItemComparisonResponse, ItemResource } from "@kharidyar/contracts";
+import type { CandidateComparison, ItemComparisonResponse, ItemResource } from "@wantkit/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 

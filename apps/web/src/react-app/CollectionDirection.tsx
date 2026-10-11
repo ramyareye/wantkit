@@ -5,9 +5,13 @@ import type {
   ConceptImageUpdateInput,
   ConceptMediaResponse,
   ConceptResource,
-} from "@kharidyar/contracts";
-import { formatMoney } from "@kharidyar/i18n";
+} from "@wantkit/contracts";
+import { formatMoney } from "@wantkit/i18n";
 
+import {
+  CollectionResourcePanel,
+  type PanelStatus,
+} from "./CollectionResourcePanel";
 import { ConceptMedia } from "./ConceptMedia";
 import { useLocale } from "./locale-context";
 import type { ConceptImageUploadValue } from "./planning-api";
@@ -177,7 +181,9 @@ export function CollectionDirection({
   canEditConcept,
   concept,
   media,
-  loading,
+  briefStatus,
+  conceptStatus,
+  mediaStatus,
   onDeleteImage,
   onEditBrief,
   onEditConcept,
@@ -192,7 +198,9 @@ export function CollectionDirection({
   canEditConcept: boolean;
   concept: ConceptResource | null;
   media: ConceptMediaResponse | null;
-  loading: boolean;
+  briefStatus: PanelStatus;
+  conceptStatus: PanelStatus;
+  mediaStatus: PanelStatus;
   onDeleteImage: (image: ConceptImageResource) => Promise<void>;
   onEditBrief: () => void;
   onEditConcept: () => void;
@@ -243,13 +251,9 @@ export function CollectionDirection({
         </div>
       </header>
 
-      {loading ? (
-        <p className="direction-folio__loading" role="status">
-          {t("direction.loading")}
-        </p>
-      ) : (
-        <div className="direction-board">
-          {concept && media ? (
+      <div className="direction-board">
+        <CollectionResourcePanel status={mediaStatus} label={t("media.title")}>
+          {media ? (
             <div className="direction-media">
               <ConceptMedia
                 busy={busy}
@@ -261,7 +265,8 @@ export function CollectionDirection({
               />
             </div>
           ) : null}
-
+        </CollectionResourcePanel>
+        <CollectionResourcePanel status={briefStatus} label={t("brief.label")}>
           {brief ? (
             <BriefDetails brief={brief} />
           ) : (
@@ -274,7 +279,11 @@ export function CollectionDirection({
               </div>
             </article>
           )}
-
+        </CollectionResourcePanel>
+        <CollectionResourcePanel
+          status={conceptStatus}
+          label={t("concept.label")}
+        >
           <article
             className={
               concept
@@ -313,27 +322,26 @@ export function CollectionDirection({
               </>
             )}
           </article>
-
-          {hasPalette && brief ? (
-            <section className="palette-card">
-              <header>
-                <p className="eyebrow">{t("palette.title")}</p>
-                <p>{t("palette.description")}</p>
-              </header>
-              <div>
-                <PaletteLine
-                  colors={brief.colorPreference.core}
-                  label={t("palette.core")}
-                />
-                <PaletteLine
-                  colors={brief.colorPreference.supporting}
-                  label={t("palette.supporting")}
-                />
-              </div>
-            </section>
-          ) : null}
-        </div>
-      )}
+        </CollectionResourcePanel>
+        {hasPalette && brief ? (
+          <section className="palette-card">
+            <header>
+              <p className="eyebrow">{t("palette.title")}</p>
+              <p>{t("palette.description")}</p>
+            </header>
+            <div>
+              <PaletteLine
+                colors={brief.colorPreference.core}
+                label={t("palette.core")}
+              />
+              <PaletteLine
+                colors={brief.colorPreference.supporting}
+                label={t("palette.supporting")}
+              />
+            </div>
+          </section>
+        ) : null}
+      </div>
     </section>
   );
 }

@@ -1,4 +1,6 @@
 # Created by https://www.toptal.com/developers/gitignore/api/macos,node,git
+# Local screenshots, release evidence, and temporary helpers.
+/.tmp/
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,node,git
 
 ### Git ###

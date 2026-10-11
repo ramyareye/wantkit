@@ -3,8 +3,8 @@ import {
   floorPlanLimits,
   type FloorPlansResponse,
   type FloorPlanResource,
-} from "@kharidyar/contracts";
-import { formatNumber } from "@kharidyar/i18n";
+} from "@wantkit/contracts";
+import { formatNumber } from "@wantkit/i18n";
 import { useLocale } from "./locale-context";
 import {
   floorPlanApi,

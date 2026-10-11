@@ -1,5 +1,6 @@
 export * from "./auth";
 export * from "./collaboration";
+export * from "./collection-mode";
 export * from "./context";
 export * from "./planning";
 export * from "./research";

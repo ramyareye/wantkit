@@ -1,4 +1,53 @@
-# Handoff: user and partner landing pages released
+# Handoff: WantKit source rename complete locally
+
+Updated 2026-10-12 (Europe/Amsterdam). User chose WantKit for the full project name and plans to rename the GitHub repository later. Applied source changes in `/Users/reza/Documents/web/kharidyar` on `main`; existing collection-mode and documentation work is preserved.
+
+- **Changed files:** root and four workspace package manifests, `bun.lock`, package imports across app/shared source and tests (including existing untracked feature files), package READMEs, auth/session type names, development fixture emails, `locale-runtime.ts` and its new six-case regression test, `README.md`, `PROJECT.md`, `BRANDING.md` and this handoff. Removed the unused `apps/web/public/kharidyar-mark.svg`; the active WantKit mark remains. New locale preferences use `wantkit.locale`; legacy language choices remain readable.
+- **Validation:** frozen-lockfile install with scripts disabled, TypeScript, ESLint, and **348 tests** pass (27 domain, 5 i18n, 142 Worker, 81 MCP, 86 UI, 7 runner). Worker tests required approved sandbox escalation for localhost listening; workerd diagnostic warnings were non-failing. Web test log: ignored `.tmp/wantkit-rename-web-tests.log`. A pre-edit baseline verifies all mechanical replacements and preservation of unrelated files and the empty index. `git diff --check` passes. No production build or deployment dry run was run; builds retain the user's approval gate.
+- **Dirty/release state:** rename and prior edits remain unstaged/uncommitted. No push, deployment, data migration, provider change or subagents. GitHub remote, working directory, Cloudflare configuration/resources and resource-targeting scripts still use their existing identifiers. Historical paths/URLs and the legacy locale fallback are intentional remaining old-name references; ignored credentials/artifacts are untouched.
+- **Next ordered task:** review the local rename and obtain build/checkpoint approval if requested; follow exact staged-tree and push gates. Rename GitHub later at the user's request, then update `origin` and verify integrations. A folder move requires approval for the exact destination; any infrastructure rename needs a separate migration plan. See [BRANDING.md](./BRANDING.md). Generalization task 3 remains the next feature task when explicitly resumed.
+
+## Previous checkpoint: neutral collection shell complete locally
+
+Updated 2026-10-04. Completed task 2 from [GENERALIZATION.md](./GENERALIZATION.md) in the current folder. General has Items / Brief & references / Budget; Home adds Floor plans. New collections default to General, with an explicit Home choice; legacy collections retain Home. Task 3 starts only on the user’s next request.
+
+- **Implemented:** compact permission-aware mode dialog, revision/conflict recovery with focus preservation, neutral/Home examples, static presenter registry, and independent optional-resource loading/retries. Items remain usable when Budget or references fail. References load on demand; stale collection responses and old mutation results cannot replace current data. Shared direction content is still reused until task 3 separates Home composition.
+- **Changed files:** PlanningDashboard, planning forms/API, CollectionDirection, Dashboard.css, new CollectionModeDialog/CollectionResourcePanel, presenter registry/resource hook, three UI test files, English/Farsi messages, GENERALIZATION/PROJECT and this handoff. All earlier task-1 source/migration/metadata and documentation edits are preserved.
+- **Validation:** lint/types, 80 UI tests and five i18n tests, production build/dry-run. Fictional browser checks cover creation and mode round trip, legacy/read-only/future modes, conflict review, keyboard focus/Escape, independent retries, late cross-collection responses, desktop/light and mobile/dark Farsi RTL without overflow. Initial reads are Items + mode + Budget; references add three reads on opening; a retry makes one read without reloading Items. Fresh-load console is clean. Earlier task-1 backend/MCP/migration validation remains recorded below and was not repeated. Existing build notices remain. Evidence: ignored `.tmp/collection-shell-*` and `.tmp/mode-shell-qa/`.
+- **Dirty/release state:** all task changes and prior docs remain unstaged; index empty on main. No commit, push, live migration/product action or deployment. Keep the settings migration and its metadata with the source. Preserve ignored local evidence. Commit and push retain their separate exact-tree/SHA approval gates.
+- **Next ordered task:** task 3 — shared brief/references and Home composition, with a retained Home-content entry in General. Task 4 is preview-first release; Food and catalogue audit/grouping/ratings remain queued/deferred as previously agreed.
+
+## Future-mode follow-up — 2026-10-05
+
+User requested saving an Activity planner mode idea for concerts, shows, art exhibitions and outings, and will continue implementation later. Added to PROJECT.md and GENERALIZATION.md alongside future Food work. Documentation only; no selectable mode or runtime changes. Task 3 remains next when requested.
+
+## Research follow-up — 2026-10-04
+
+Added `wy51ai/floorplan-3d` to PROJECT.md's deferred Home research list at the user's request. README/license review suggests a useful 2D/3D placement reference; image/PDF extraction, integration quality and effort remain unverified. Evaluate after the General/Home release. Documentation-only follow-up; whitespace check passed, prior dirty files/index preserved, no commit or integration. Task 3 remains next.
+
+## Previous checkpoint: mode-settings foundation complete locally
+
+Updated 2026-10-04. Completed task 1 from [GENERALIZATION.md](./GENERALIZATION.md) in the current folder. New Collections atomically default to General (or explicit Home); existing Collections without settings retain legacy Home behavior. Dedicated settings keep Collection responses and historical v1 exports unchanged. Task 2, the neutral collection shell and selector, starts only on the user's next request.
+
+- **Implemented:** pure domain identifiers/fallback rules; dedicated contracts; additive `0017_collection_mode_settings.sql` plus Drizzle metadata; shared read/write service and authenticated REST; bounded MCP read and approval-required mode edit. Editors/Owners use existing scope permissions, with archive/grant rechecks inside SQL and optimistic revisions. Changes record the latest actor/time without touching planning history. Unknown future identifiers remain readable with shared fallback and cannot be overwritten by this client; widening storage is a later migration.
+- **Changed files:** new `collection-mode.ts` files in domain/contracts/DB; worker mode service/routes; collection creation and Worker route registration; MCP catalog/server and approval-title translations; domain/Worker/migration/MCP tests; GENERALIZATION/PROJECT and this handoff. `.gitignore` now preserves and excludes `.tmp/` local screenshots, release evidence and helpers. Older CONTEXT/MARKETING/ADR/PRODUCT_AUDIT documentation and other dirty changes are preserved.
+- **Validation:** all gate components pass: lint, TypeScript, Drizzle metadata check, 334 tests (27 domain, 5 i18n, 142 Worker, 81 MCP, 72 UI, 7 runner), production build and deployment dry-run. Real D1 tests cover legacy/default/explicit modes, denied scoped reads and Contributor edits, concurrent revisions, grants/archive changes between read and write, atomic creation failure, approval/replay, and content-preserving Home → General → Home. A populated pre-0017 migration rehearsal preserves every application table and an old v1 snapshot; migration errors roll back and foreign-key checks pass. Only the new settings table appears in the Drizzle diff. The full command hit sandbox listener restrictions, then an existing MCP fixture cleanup issue exposed by appended tests; reran the MCP suite after correcting test cleanup, plus the remaining UI/runner/build components, without repeating successful unchanged suites. Existing test-runtime/PDF/OAuth and bundle/local-secret warnings remain. Evidence: `.tmp/collection-mode-check.log`, `collection-mode-mcp.log`, `collection-mode-ui.log`, `collection-mode-build.log`.
+- **Release boundary:** no live database migration, product read/write, dependency/binding change, deployment, commit or push. Apply migration 0017 before code rollout; retain the additive table for an old-code rollback. Current UI remains Home-shaped until task 2. Existing deployed landing pages remain unchanged.
+- **Dirty state:** task changes and prior documentation are unstaged; the index remains empty. Keep docs/source/new migration and metadata for the reviewed checkpoint; do not add `.tmp/` or delete local evidence. Commit/push require their separate exact-tree/SHA approvals.
+- **Next ordered task:** task 2 — mode selector and neutral collection shell, with independently recoverable optional panels. Task 3 composes shared brief/Home tools; task 4 releases through preview first; Food remains task 5 and catalogue audit/grouping/ratings stay deferred.
+
+## Previous checkpoint: general WantKit architecture defined
+
+Updated 2026-10-04. Completed one task in the current folder: define the shared planning model, navigation and migration plan for the broader WantKit redesign. General becomes the new-collection default; Home is composed per Collection; Food follows with its own measured ingredients and recurring planning rules. No runtime implementation started. See [GENERALIZATION.md](./GENERALIZATION.md) and [CONTEXT.md](./CONTEXT.md).
+
+- **Decisions:** retain Workspace/Collection/Item/Candidate/Product/Offer identities and permissions. Use separate mode settings to preserve strict Collection contracts and v1 exports. Existing collections retain Home behavior until explicitly changed; switching modes preserves content. Model this as an incremental redesign of the app, with shared core services and mode-specific presentation/domain rules.
+- **Changed:** GENERALIZATION.md; CONTEXT.md glossary; docs/adr/0001-shared-planning-core-and-collection-modes.md; current task notes in PROJECT.md, MARKETING.md and this handoff. Earlier product-audit and future-mode documentation remains intact.
+- **Validation:** cross-checked current domain quantities, contracts, snapshot constraints/readers, authorization, collection edit service and dashboard loading/navigation. Current Cloudflare migration/version docs consulted. Documentation link and whitespace checks completed; no runtime tests or live product audit needed for this design-only task.
+- **Model/efficiency check:** GPT-6.1 Sol with High reasoning is suitable for this bounded architecture task. The actual UI model selector was not independently verified. No explicit model-check rule was found in the current repository or global AGENTS.md; the user's request applies from this session and is recorded here for future tasks. Review suitability/effort and focused validation before each task; no subagents or alternate source copies.
+- **Next ordered task:** mode-settings foundation: domain/contracts, additive persistence, shared REST/MCP service and new-collection defaults, with compatibility/permission/concurrency tests. Start on the user's next request. Collection shell, Home composition, release and Food follow in the order in GENERALIZATION.md.
+- **Dirty state:** all design documentation is unstaged; earlier PROJECT/HANDOFF edits, PRODUCT_AUDIT.md and .tmp artifacts preserved. No commit, push, database migration or deployment in this task.
+
+## Previous checkpoint: user and partner landing pages released
 
 Updated 2026-10-03. Released user-pushed `c0b4562` from the current folder through preview, then production. Anonymous `/` and public `/about` focus on users; public `/partners` has its own investor/partner positioning and brief. Links connect both pages, and the demo uses fictional products. Signed-in home continues to open the planning dashboard. See [MARKETING.md](./MARKETING.md) and [RELEASE.md](./RELEASE.md).
 
@@ -7,6 +56,26 @@ Updated 2026-10-03. Released user-pushed `c0b4562` from the current folder throu
 - **Limit:** the marketing page remains a client-rendered SPA. Existing build warnings remain; local auth secrets are absent, but live Google initiation/callback checks passed.
 - **Changed/dirty state:** this release updated MARKETING.md, PROJECT.md, HANDOFF.md and RELEASE.md only; all unstaged. Existing PRODUCT_AUDIT.md and .tmp artifacts preserved. Runtime source is clean at the pushed commit. No assistant commit/push.
 - **Next ordered task:** none selected. Optional General/Home mode design can be requested next; deferred product audit/grouping/ratings and Food implementation do not resume automatically.
+- **Agreed future modes:** General by default; optional Home presets per collection; Food later. Mode selection remains optional and all modes share the planning core. Recorded in MARKETING.md and PROJECT.md; implementation is not selected yet.
+
+## Previous checkpoint: product follow-ups deferred
+
+2026-10-03 user decisions: skip the remaining product audit and defer comparison grouping and ratings sorting for now. Preserve the completed 18 photo updates and six Offers. Do not continue catalogue cleanup, grouping or ratings work unless explicitly resumed. No immediate task remains queued; future ideas remain documented in PROJECT.md. No grouping work started.
+
+Updated 2026-10-03 after the user's request to proceed. Saved and read back 18 missing photo URLs and six missing Offers, preserving existing Products/Candidates, attributes and planning status. All Products now have Offers; 195 of 201 have photos. The six remaining photo gaps are discontinued SKLUM entries with unverifiable exact variants. See [PRODUCT_AUDIT.md](./PRODUCT_AUDIT.md) for operation IDs, sources, limits and remaining gaps.
+
+- **Validation:** 18 image URLs returned HTTP 200/image content types; all 24 writes succeeded and were read back. Production browser confirmed the MUJI coat-stand photo loads and its €89.95 Offer is present. Yumeko prices stay starting-at; Glasgow's selected-size price remains unknown.
+- **Next ordered task:** none currently selected. Product completeness, comparison grouping and ratings sorting are outside the immediate queue by user decision. No grouping, runtime changes, commit, push or deployment in this pass.
+- **Dirty state:** PRODUCT_AUDIT.md, PROJECT.md and HANDOFF.md plus an untracked verification screenshot in .tmp. No runtime edits; existing documentation changes preserved. Keep the screenshot out of a documentation commit.
+
+## Previous checkpoint: saved-data product audit complete
+
+Updated 2026-10-03. The user confirmed importing was finished and requested a fast audit. Read all nine collections through the production connector: 203 active Items, 201 Products and 195 Offers. No product writes, runtime changes, commit, push or deployment.
+
+- **Findings:** 177 Products have photo URLs; 24 lack them. 104 Offers lack unit prices; another 6 Products have no Offer. Brand/merchant fields are present. Shipping is unknown for 194 Offers; stock is unknown for 163. Fourteen Products have rating/review-count attributes. Full counts and missing-photo/Offer lists: [PRODUCT_AUDIT.md](./PRODUCT_AUDIT.md).
+- **Limits:** saved-field audit only. All candidate pages were read; retailer URL responses, photo loading/variant matches and current prices were not checked. Offer dates range September 8–26. Connector size/rate limits required smaller reads and pauses.
+- **Next ordered task:** fill the missing photos and Offers, preserving existing records; then price/detail refresh, reviewed alternative grouping, optional ratings sorting. Stop here until the user requests the next task.
+- **Dirty state:** documentation only: PRODUCT_AUDIT.md, PROJECT.md and HANDOFF.md. No staging or tests needed for this read-only data audit/documentation update.
 
 ## Previous checkpoint: monitoring complete; product work deferred
 

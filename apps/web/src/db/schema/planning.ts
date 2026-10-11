@@ -7,7 +7,7 @@ import {
 	merchantSalesChannels,
 	offerPriceKinds,
 	shippingBases,
-} from "@kharidyar/domain";
+} from "@wantkit/domain";
 import { sql } from "drizzle-orm";
 import {
 	check,

@@ -1,10 +1,10 @@
 -- Local development data only. All identifiers are fixed so rerunning this file is safe.
 
 INSERT OR IGNORE INTO user (id, name, email, email_verified)
-VALUES ('dev-user', 'Development Owner', 'dev@kharidyar.local', 1);
+VALUES ('dev-user', 'Development Owner', 'dev@wantkit.local', 1);
 
 INSERT OR IGNORE INTO user (id, name, email, email_verified)
-VALUES ('dev-collaborator', 'Mina Collaborator', 'mina@kharidyar.local', 1);
+VALUES ('dev-collaborator', 'Mina Collaborator', 'mina@wantkit.local', 1);
 
 INSERT OR IGNORE INTO workspaces (id, name, created_by_user_id)
 VALUES ('dev-workspace', 'My Home', 'dev-user');

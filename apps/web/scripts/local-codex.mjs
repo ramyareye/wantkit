@@ -17,7 +17,7 @@ import {
   localCodexJobSchema,
   localCodexResultSchema,
   researchProviderSearchOutputSchema,
-} from "@kharidyar/contracts";
+} from "@wantkit/contracts";
 import { z } from "zod";
 
 const configPath = () =>

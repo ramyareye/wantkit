@@ -1,9 +1,27 @@
-# Provisional Branding Notes
+# WantKit Branding
 
-- Status: Working direction, not a final brand decision
-- Checked: 2026-09-01
+- Status: **WantKit** confirmed as the project name on 2026-10-12.
+- Public origin: `https://wantkit.todoless.dev`.
+- Naming: **WantKit** in prose and UI; `wantkit` for the root package and future repository slug; `@wantkit/*` for workspace packages; `WantKitAuth` / `WantKitSession` for internal auth types.
 
-## Current shortlist
+## Rename progress
+
+The local source rename covers package manifests, imports, scripts, lockfile, current product documentation, development fixture emails and internal auth types. The unused original brand mark is removed. Locale preferences now use `wantkit.locale`, with a read fallback for `kharidyar.locale` so existing users retain their language choice.
+
+Remaining steps, in order:
+
+1. Review the locally validated rename together with the existing uncommitted collection-mode work. TypeScript, lint and 348 tests pass; a production build is still pending approval. Builds, commits, pushes and deployments retain their explicit approval gates.
+2. When requested, rename `ramyareye/kharidyar` to `ramyareye/wantkit` in GitHub. Then update this checkout's `origin` to `https://github.com/ramyareye/wantkit.git` and verify integrations. GitHub redirects repository links and Git traffic, but callers should use the new URL; published Action references and project-site URLs need separate attention if present. Do not reuse the old repository name. No `.github` workflows were present in this checkout during the local rename; external CI/deployment integrations have not been audited.
+3. If desired, rename the local directory only with explicit approval for its exact destination, then update editor/Codex paths. Current working directory remains `/Users/reza/Documents/web/kharidyar`.
+4. Treat infrastructure naming as a separate approved migration: Worker names `kharidyar` / `kharidyar-preview`, D1 names `kharidyar-{local,preview,production}`, R2 names `kharidyar-concept-media-{local,preview,production}`, Workflow names `kharidyar-research{,-local,-preview}`, and the preview `workers.dev` origin. Inventory bindings, stored data, secrets, OAuth redirects, connector URLs and deployment integrations before changing them. A source replacement is not a resource migration. Existing configuration and resource-targeting commands retain their current names.
+
+Historical release evidence, former URLs and local paths remain accurate to the events they describe. Ignored credentials and build/test artifacts are not renamed by this source change.
+
+References: [GitHub repository rename behavior](https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository), [Cloudflare Wrangler resource configuration](https://developers.cloudflare.com/workers/wrangler/configuration/).
+
+## Historical shortlist — 2026-09-01
+
+The notes below record the earlier naming research. The WantKit decision above supersedes the provisional recommendations; domain-availability claims are historical.
 
 ### WantKit — international direction
 
@@ -35,7 +53,7 @@ SIDN reported `kiesmaatje.nl` as free when checked on 2026-09-01. Availability c
 - Prefer **WantKit** for an international, English-friendly product with `.com`, `.app`, or `.io` positioning.
 - Prefer **Kiesmaatje** for a Netherlands-first identity and a distinctly Dutch public brand.
 
-Neither name is final. Domain registration, prior-use research, and trademark clearance should happen before changing the product name in code.
+At the time of this shortlist, neither name was final.
 
 ## Other Dutch alternatives considered
 
@@ -54,7 +72,7 @@ Neither name is final. Domain registration, prior-use research, and trademark cl
 
 ## Implementation boundary
 
-Register the chosen domain before changing the product name in code. A public brand and custom domain can be introduced while internal package names, database names, and the Cloudflare Worker remain `kharidyar`. Rename those identifiers only after the brand is final and only where the change provides user-facing value.
+WantKit is now the chosen brand and package namespace. Existing database, storage, Workflow and Worker identifiers remain `kharidyar` until a separately approved infrastructure migration, as described above.
 
 Before a public launch, perform a formal Benelux trademark and Dutch business-name check. Domain availability alone does not establish trademark clearance.
 

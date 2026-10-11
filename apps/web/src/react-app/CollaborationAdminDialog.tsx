@@ -3,8 +3,8 @@ import type {
 	InvitationCreateInput,
 	WorkspaceCollaborationResponse,
 	WorkspaceSummary,
-} from "@kharidyar/contracts";
-import { formatDateTime, type MessageKey } from "@kharidyar/i18n";
+} from "@wantkit/contracts";
+import { formatDateTime, type MessageKey } from "@wantkit/i18n";
 import {
 	useCallback,
 	useEffect,
