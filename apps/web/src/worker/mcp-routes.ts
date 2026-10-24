@@ -49,7 +49,7 @@ export const mcpRoutes = new Hono<WorkerAppEnv>()
 					id: null,
 					error: {
 						code: -32000,
-						message: "Connect your WantKit account to continue.",
+						message: "Connect your HopKit account to continue.",
 					},
 				},
 				401,

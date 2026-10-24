@@ -500,7 +500,7 @@ describe("permission-filtered context snapshots", () => {
 			"text/markdown",
 		);
 		expect(markdownResponse.headers.get("content-disposition")).toContain(
-			`wantkit-context-${snapshot.id}.md`,
+			`hopkit-context-${snapshot.id}.md`,
 		);
 		const markdown = await markdownResponse.text();
 		expect(markdown).toContain("Japanese\\-modern calm");

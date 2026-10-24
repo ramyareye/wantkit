@@ -1,4 +1,229 @@
-# Handoff: remaining WantKit checkpoint prepared
+# Handoff: combined HopKit source ready for commit review
+
+Updated 2026-10-24. Read [HOPKIT_COMBINED_HANDOFF.md](./HOPKIT_COMBINED_HANDOFF.md)
+first; it supersedes older next-step and hosted-state notes below.
+
+- Branding, General/Home shared brief/Home composition and existing Delivery /
+  personal portfolio source are reviewed together in this checkout.
+- Full gate: 387 tests, lint/types/schema metadata, production and preview build /
+  dry-runs pass. Eight local R2 helper tests pass. Browser round-trip/preservation,
+  lazy Home details, keyboard/Escape, mobile EN/FA/RTL and light/dark pass. One
+  theme-variable correction was verified in-browser after the full gate.
+- Delivery's separate 22-file baseline patch/manifest hashes verify. Its preview
+  and Todoless migrations are already live per DELIVERY_PILOT_RELEASE.md; actual
+  personal-account acceptance remains pending. Production remains domain-only.
+- The 72-file checkpoint is staged for exact approval; no commit or push. No deployment or
+  folder move in this pass. Current path `/Users/reza/Documents/web/wantkit`;
+  requested `hopkit` rename stays last. Life Planner remains planning only.
+- Next: exact commit approval, then separate exact-SHA push approval. Recheck
+  remote/triggers before pushing. Deployment is explicitly paused. A new chat is
+  optional; the linked handoff preserves the continuation instructions.
+
+---
+
+# Handoff: exact Delivery candidate and secure API recovery
+
+Updated 2026-10-23. Local validation complete; no staging, commit, push or live change.
+
+- User approved `/private/tmp/todoless-hopkit-release-candidate-2026-10-23`.
+  Deployed c0b4562 plus unchanged 22-file Delivery patch; all 273 baseline files
+  verified, dependencies installed offline/frozen. Original dirty work preserved.
+- Exact candidate passes lint/typecheck/production build, 34 focused tests, real
+  D1 progress/return/race/access tests, compiled signed-session and recovery checks.
+  Thirteen artifact hashes recorded; General/Home/0017, branding and demos excluded.
+- Todoless: API/MCP/freeze artifacts hashed; 53 tests/701 assertions, exact API
+  behavior/smoke/MCP, five populated migration failure/retries and freeze/resume
+  preserve credentials, history, submitted/approved hours, CSV and exact receipts.
+- Do not deploy generated baseline Wrangler config (old research origin). Inherit
+  current bindings/settings and completed HopKit domain cutover. Fresh read-only
+  hosted version/settings inventory matches the prior handoff; no values changed.
+- Next: exact Git preparation gate and separately authorized hosted rehearsal,
+  current metadata/bookmark/triggers and separate personal-account acceptance.
+  No invitations/imports/rates/caps/payment automation. Existing branding/General
+  work and its separate combined-release preference remain untouched.
+
+See [release package](DELIVERY_PILOT_RELEASE.md), its JSON artifact manifest and
+[recovery runbook](../todoless/docs/planning/release-candidate-recovery-2026-10-23.md).
+
+---
+
+# Handoff: personal project portfolio
+
+Updated 2026-10-23. **Implemented locally; no commit, push or live change.**
+
+- New Delivery > Personal portfolio selects existing projects across workspaces.
+  One chosen active priority, up to two Ready alternatives, blockers/weekly progress.
+- Private shared daily availability: 0-120 minutes, blank unset, repeated zero days
+  valid. Pause/resume keeps task state/active slot/evidence and a restart note.
+  Time tracking/approval stays separate; no deadlines, imports or life-planning.
+- API/MCP plus migration 0009 prepared in Todoless. API 53 tests/701 assertions,
+  typecheck/API behavior/smoke/MCP pass. HopKit 26 UI/client + 8 proxy tests,
+  lint/typecheck/build and synthetic browser selection/zero-days/resume pass.
+- Regenerated 22-file Delivery-only review patch; 59 API/MCP source hashes.
+  No baseline candidate build yet. Preserve General/Home and branding work;
+  their combined release needs separate complete scope/schema validation.
+- Next: exact candidate and secure API recovery validation, then hosted personal
+  accounts/workspace acceptance. No alternate folder, staging or live setup used.
+  Details: [Delivery release package](DELIVERY_PILOT_RELEASE.md) and linked contract.
+
+---
+
+# Handoff: Life Planner added to the roadmap
+
+Updated 2026-10-23. **Planning only**, requested alongside the current combined
+work. [LIFE_PLANNER.md](./LIFE_PLANNER.md) captures flexible anchors, three day
+modes, exercise, linked shopping/meals/chores/tasks, optional projects, recovery
+and a bounded morning/evening flow without automatic backlog carryover.
+
+- Reuse map distinguishes existing purchase planning, local General/Home and
+  Delivery work, and missing routines/personal tasks/Food capabilities. Day modes
+  are separate from collection modes. The supplied chat requirements are recorded;
+  the linked private conversation could not be fetched independently.
+- Linked from PROJECT and GENERALIZATION. Documentation/links/whitespace checked;
+  no application changes, build, live action, stage, commit or push for this task.
+  Existing dirty work is preserved and the index remains empty.
+- Next: finish the previously selected combined work and its release checks.
+  Life Planner implementation remains unselected. Keep exact commit/push gates;
+  rename the local folder to `/Users/reza/Documents/web/hopkit` at the end.
+
+---
+
+# Handoff: HopKit branding ready in the current folder
+
+Updated 2026-10-23. User direction: **do it here, push all together, rename the
+folder at the end**. Branding is implemented locally; Google consent app name is
+saved as HopKit. The website still serves the domain-only `c0b4562` release.
+See [BRANDING.md](./BRANDING.md) for changed surfaces and compatibility boundaries.
+
+- Name/metadata, new H favicon/mark, English/Persian copy, auth/MCP labels, runner
+  prompts, context export names, fixture and package display descriptions updated.
+  Protocol IDs/scopes, cookies, package namespaces and preference keys preserved.
+- TypeScript/lint/build, 146 focused tests and English dark/Persian light browser
+  checks pass. Existing export filename assertion updated. No real data writes.
+  Current built output includes the concurrent features and is **not** an approved
+  isolated branding release. Full combined feature/schema checks remain required.
+- Prior rename/General/Home/Delivery/pilot work remains in this folder; index
+  empty. No stage, commit, push, deployment, alternate source copy or folder move.
+  Superseded standalone patch is ignored evidence only. Local static preview at
+  `http://127.0.0.1:5187/about`; screenshots/logs under `.tmp/hopkit-branding-*`.
+- Next: finish remaining combined work, review/approve the exact staged tree and
+  commit, separately approve the exact push/release, then rename the folder to
+  `/Users/reza/Documents/web/hopkit` and update the active project/session paths.
+  Resource migration remains deferred and preview-first. Keep GitHub CLI account
+  `rezababaeicelebratix`. No Git approval is implied by “push all together.”
+
+---
+
+# Handoff: Veloura hosted pilot preparation
+
+Updated 2026-10-23. **Two UI gaps fixed locally; no commit, push or live change.**
+See [DELIVERY_PILOT_RELEASE.md](DELIVERY_PILOT_RELEASE.md) and linked Todoless
+release review/import preview. Existing dirty work and empty index preserved.
+
+- Update progress saves notes/next action/evidence and blocker details without a
+  status transition. Review/Verify stays frozen; CAS/exact retries retained.
+- Latest task return reason/author/time/version and paginated history are visible;
+  later progress does not hide feedback. No new backend schema/runtime change.
+- 20 UI/client + 7 proxy tests, real disposable-D1 retry/race/access checks,
+  contributor/owner browser flow, lint, typecheck and current-checkout build pass.
+- Refreshed unapplied 19-file Delivery patch against c0b4562, retaining only the
+  original three integration hunks. General/Home, 0017 and branding are excluded.
+  Actual baseline candidate is still unbuilt/untested; current dist is not releasable.
+- Domain cutover below is separate and complete: preserve hopkit.hiphop.dev and
+  its new live origins/bindings. Concurrent branding work remains separate;
+  refresh release baseline if it ships first. No live changes by this pilot task.
+- Next: baseline candidate and hardened API recovery validation; then actual
+  identities/workspace/calendar and explicit hosted approval. Todoless needs
+  0005-0008. Terms unset, 10h shared availability, payments manual. No invitations/import.
+
+---
+
+# Handoff: HopKit production domain live
+
+Updated 2026-10-23 (Europe/Amsterdam). The user explicitly approved the
+**domain-only cutover, branding afterward**. `https://hopkit.hiphop.dev` is live
+on existing Worker `kharidyar`; deployed source remains `c0b4562` with WantKit UI.
+See [HOPKIT_DOMAIN_RELEASE.md](./HOPKIT_DOMAIN_RELEASE.md). Earlier domain-only
+preparation statements below are historical. No full resource migration or
+General/Home/Delivery release occurred.
+
+- **Applied:** custom domain and additive Google domain/callback; exactly three
+  runtime origins changed, all 22 other bindings inherited. Production version
+  `11e7a71d-93f2-4903-9071-e238019bac8a` is active at 100%; deployment
+  `2bc46b9d-8f80-45ad-82bc-c1607ea22cb6`. Old hostname retained. Google project,
+  credentials, consent name and Testing status remain unchanged.
+- **Verified:** both hosts pass release smoke and 18 artifact/discovery/private
+  access checks. All four deployed modules and asset configuration match the
+  baseline; five public artifacts per host are byte-identical. Fresh Google
+  login on the new host loaded the existing workspace/collection with the account
+  selected by the user. No planning records were edited or research invoked.
+- **Recovery:** previous version `8232de9d-f03f-469c-8fc3-344a78fe259a` at 100%
+  restores the old runtime origin; Google/DNS additions are separate. No storage
+  or schema change occurred. Rollback was unnecessary. Private evidence remains
+  under `.tmp/hopkit-domain-*`; do not rerun the completed mutation.
+- **Files/checks:** HOPKIT_DOMAIN_RELEASE, RELEASE, this section, README, BRANDING,
+  CLOUDFLARE_RENAME and default/production research origin in `apps/web/wrangler.json`.
+  Wrangler `types --strict-vars=false --check` passes without generated changes.
+  Existing rename/Delivery/pilot dirty work is preserved; index empty. No staging,
+  commit/push, source rebuild, alternate checkout or subagent.
+- **Next:** reconnect existing assistants to `https://hopkit.hiphop.dev/api/mcp`
+  because canonical issuer/audience changed; then prepare branding separately.
+  No connector registration was deleted/recreated. Resource migration remains
+  deferred and preview-first. Keep the exact Git gates and current folder.
+
+---
+
+# Handoff: HopKit Delivery UI checkpoint
+
+Updated 2026-10-22. **Implemented locally; no commit, push or deployment.** The
+user requested the minimum Todoless UI in the renamed HopKit project. Actual
+checkout remains `/Users/reza/Documents/web/wantkit`; Cloudflare rename preparation
+resumed separately below, with deployment still prohibited. See [DELIVERY.md](./DELIVERY.md) for contracts, files and local checks.
+
+- **Implemented:** signed-in Delivery page; personal key held only in tab memory;
+  bounded same-origin proxy; task queue/status/evidence; manual cross-project
+  hours; weekly approval/return/revision without self-review; submitted/approved
+  totals, history and CSV. No live connection/settings/terms or persistent keys.
+- **Validated:** TypeScript, lint, full 360-test suite and local build; actual UI +
+  proxy + disposable Todoless Worker/D1 browser flow, including stale writes,
+  lost-response exact retry, review/verify/done and adjusted weekly approval.
+  Desktop/light and mobile/dark screenshots inspected. Todoless separately passes
+  46 correctness/security tests / 588 assertions plus API behavior/smoke.
+- **Preserved:** previous six dirty rename files, current General/Home source,
+  resource configuration and separate identities. Index empty on main. No staging,
+  commit/push, live provider change, migration, deployment or external message.
+- **Next ordered task:** accept the local pilot UI and agree real week settings,
+  then prepare an explicitly approved preview release covering unreleased backend
+  prerequisites and existing HopKit source. Keep rates/currency/cap unset until
+  agreed, payments manual, Celebratix in Linear and WF ownership unchanged.
+
+---
+
+# Handoff: HopKit rename preparation, preview first
+
+Updated 2026-10-22 (Europe/Amsterdam). **Resumed at the user's request to find the Google OAuth project/client first; preparation only, do not deploy.** **HopKit** is confirmed, with future production origin **`https://hopkit.hiphop.dev`**. Use the subdomain for now; no domain purchase. Continue the selected full Cloudflare resource migration **as preparation only**, preview first and production separately. The former LifeKit naming exploration is resolved.
+
+- **Outcome:** README/BRANDING and [CLOUDFLARE_RENAME.md](./CLOUDFLARE_RENAME.md) now record the HopKit targets, exact preview setting changes, copy/freeze checks and recovery boundaries. Preview target is `https://hopkit-preview.formahsa.workers.dev`. Production stays at `https://wantkit.todoless.dev` until separately reviewed. Active configuration, application packages/UI, GitHub and folder names have not been switched.
+- **Verified live evidence:** October 18 read-only preflight confirms active = latest preview version `2f5314c4-2f57-4d61-a55d-a9786728e8b5`, unchanged deployment/settings/public artifact hashes, four R2 objects totaling 2,129,658 bytes. Private evidence remains under ignored `.tmp/cloudflare-rename-preview-*`. No D1 export or R2 object-content download occurred. The October 18 paginated account inventory finds no HopKit resource-name collisions, and preview Workflow counts are all zero. `hiphop.dev` is active in the same account, but its DNS-record read returned 403. Evidence: `.tmp/hopkit-targets-2026-10-18T11-54-39.956Z.json`. Production-specific settings/data remain last inspected October 12.
+- **Prepared copy helper:** new `apps/web/scripts/cloudflare-rename-r2.mjs` accepts only the preview pair, checks a fresh source manifest, preserves exact HTTP/custom metadata and bytes, refuses overwrites/conflicts, verifies source/target after copying, and retains partial copies on failure. It has no credentials, remote-session startup or executable CLI. The future caller must verify account/binding names and keep all application/job writers frozen. No remote copy ran.
+- **Validation:** eight focused Bun tests pass. The local-only Wrangler emulator fixture `.tmp/hopkit-r2-local-check.mjs` passes metadata casing/date, bytes/checksum, retry and create-only checks with `persist: false`, `remoteBindings: false` and fictional data. It caught and fixed Node `Headers` serialization through the proxy; use `onlyIf: { etagDoesNotMatch: "*" }`. Emulator success does not prove remote transport or bucket-policy migration. Node syntax validation and `git diff --check` pass; application builds/tests were not repeated for unchanged runtime source.
+- **Latest checks before pausing:** Chrome native UI verified preview Settings → Builds shows “Git repository / Connect” (no connected repository), and Trigger events shows no cron, queue consumers or email routing. The API’s earlier Builds 403 does not block this preview finding; production Builds remains unverified. Preview R2 is WEUR/Standard/default jurisdiction, managed public URL disabled, no custom domains or locks, and one enabled seven-day multipart-abort lifecycle rule. CORS and notification reads returned 404: their configuration remains unverified pending dashboard inspection. Private evidence: `.tmp/hopkit-preview-details-2026-10-18T12-07-06.613Z.json`. The newer Worker-version API returned an `assets` field; inspect its preservation semantics when resumed. No data copy/export or settings update occurred.
+- **OAuth identified October 22:** Google Console confirms project `kharidyar`, its sole listed web client **Web client 1 Kharidyar**, ID ending `06e9n3c.apps.googleusercontent.com`. It registers the current preview callback and both production callbacks; the HopKit preview callback is absent. The exact later change is to append `https://hopkit-preview.formahsa.workers.dev/api/auth/callback/google`, preserving all existing entries and credentials. Full public client ID, Console link and current allowlists are in [CLOUDFLARE_RENAME.md](./CLOUDFLARE_RENAME.md). Current source uses server-side Better Auth; a Google JavaScript-origin addition is not established as necessary. The ignored credential file matches the project/client, but the live Cloudflare secret value was not compared. No fields were edited/saved, secrets revealed/rotated, application sign-in started, or new permissions granted. No user input is needed for identification now.
+- **Remaining prerequisites:** finish bucket-policy checks and refresh collision/Workflow checks before mutation; verify the Google OAuth client/origin/redirect and connector registrations; finish a proven settings/code/assets-preserving cutover and rollback; establish a complete request/job freeze and D1 verification. Production still needs exact-hostname DNS/custom-domain conflict verification; zone/account are confirmed. No account/permission changes are authorized implicitly.
+- **State / this lookup:** only HANDOFF and CLOUDFLARE_RENAME documentation updated; Console/source inspection and `git diff --check` validate this preparation. The six existing rename files and newer Delivery UI changes are preserved in `/Users/reza/Documents/web/wantkit`; the index is empty. No application tests repeated for these documentation-only changes. No cloud mutation, DNS/OAuth change, deployment, commit, push, alternate checkout or subagents. Keep default GitHub CLI account `rezababaeicelebratix`.
+- **Next:** (1) finish connector endpoint and bucket-policy checks, the settings/code/assets-preserving cutover, request/job freeze and D1 verification package in this folder; (2) present preview mutation approval with the exact additive Google redirect and verified recovery; (3) execute/verify only if approved; (4) propose production separately, then the source/UI/package rename and GitHub/folder follow-ups. Preserve deployed source `c0b4562`; never release current General/Home/Delivery source or migration 0017 as part of infrastructure renaming. Exact commit/push and directory gates remain in force.
+
+## Previous preparation checkpoint — 2026-10-12
+
+Updated 2026-10-12 (Europe/Amsterdam). This chat and the Codex project now use `/Users/reza/Documents/web/wantkit`. Local `main` and `origin/main` both resolve to the user's completed checkpoint `bfcdcec3efc81fd9d387e38b73e8fb1fa7e5113a`; the checkout was clean before this preparation. Keep the default GitHub CLI account `rezababaeicelebratix`.
+
+- **Outcome / approved scope:** the user chose **full resource migration, preview first; production separately**, then asked to stop and continue tomorrow. Verified the Cloudflare account, live resource names, bindings, active deployments, Workflow instance counts and R2 size/count metadata. Prepared the old/new resource map and cutover prerequisites in [CLOUDFLARE_RENAME.md](./CLOUDFLARE_RENAME.md). No cloud resource has changed. Scope approval is for preparing the next review; it is not deployment approval.
+- **Changes / validation:** README and BRANDING now reflect the completed folder/GitHub moves; this handoff and the migration plan record the remaining work. Live reads and Git remote verification succeeded. Cloudflare Builds trigger inspection returned 403, so integration state is unknown. Whitespace validation is sufficient for these documentation changes; no application tests/builds repeated.
+- **Release boundary:** both environments still serve the October 3 landing-page release (`c0b4562`), not the current General/Home source. Do not build/deploy HEAD or apply migration 0017 as part of a naming-only cutover. Preserve live flags, allowlists, secrets, observability and production origin. No commit, push, deployment, data export or product data mutation occurred.
+- **Preview evidence saved:** `.tmp/cloudflare-rename-preview-before.json` contains live settings and version metadata (private, ignored); newest uploaded version equals active `2f5314c4-2f57-4d61-a55d-a9786728e8b5`. `.tmp/cloudflare-rename-preview-objects.json` lists all four preview R2 objects through the same REST API family Wrangler uses. `.tmp/cloudflare-rename-preview-public.json` records five public artifact hashes. The deployment was unchanged across preflight. Both ignored helper scripts pass `node --check`.
+- **Dirty state / next:** four documentation files are unstaged (README, BRANDING, HANDOFF and new CLOUDFLARE_RENAME); index remains empty. Tomorrow: (1) resume the already approved full-migration scope; (2) resolve preview OAuth and Cloudflare Builds prerequisites; (3) finish the exact data-copy/settings-update candidate and recovery checks using the existing deployed release; (4) request preview deployment/migration approval; (5) verify preview before separately proposing production. Cloudflare dashboard in the in-app browser reached sign-in; no login or settings change occurred. No subagents or alternate checkout used.
+
+## Previous checkpoint: remaining WantKit checkpoint prepared
 
 Updated 2026-10-12 (Europe/Amsterdam). The user pushed partial commit `d02a166ecb43843989ca2ecb1e0d5aaae7541f9f` and manually renamed GitHub to `ramyareye/wantkit`. Verified `origin` and remote `main` at that exact SHA. Keep working in `/Users/reza/Documents/web/kharidyar` on `main`. GitHub CLI was restored to the user's preferred `rezababaeicelebratix` account; do not switch it for personal repository administration.
 

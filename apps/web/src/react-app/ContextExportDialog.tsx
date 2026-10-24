@@ -63,7 +63,7 @@ export function ContextExportDialog({
 		);
 		const anchor = document.createElement("a");
 		anchor.href = url;
-		anchor.download = `wantkit-context-${snapshot.id}.md`;
+		anchor.download = `hopkit-context-${snapshot.id}.md`;
 		anchor.click();
 		URL.revokeObjectURL(url);
 	}

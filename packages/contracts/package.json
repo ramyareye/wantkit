@@ -1,7 +1,7 @@
 {
 	"name": "@wantkit/contracts",
 	"version": "0.0.0",
-	"description": "Runtime-independent WantKit API contracts",
+	"description": "Runtime-independent HopKit API contracts",
 	"dependencies": {
 		"@wantkit/domain": "workspace:*",
 		"zod": "4.5.4"

@@ -1,5 +1,47 @@
 # Release runbook
 
+**Combined source ready for commit review — 2026-10-24:** HopKit branding,
+General/Home shared briefs and Delivery/personal portfolio are reviewed together
+in the current folder. The combined quality gate passes (387 tests, lint, types,
+schema metadata, build and production/preview dry-runs); eight R2 helper tests and
+the remaining General/Home browser checks pass. A final CSS variable correction
+was verified in the browser. See [HOPKIT_COMBINED_HANDOFF.md](./HOPKIT_COMBINED_HANDOFF.md).
+Exact commit and separate push approvals are still required. **Do not deploy.**
+Current dist is preview output, not a frozen production artifact; folder rename
+stays last. Life Planner and full Cloudflare migration remain deferred.
+
+Production remains the domain-only version below. The separate Delivery-only
+preview `dfd648fb-6c4c-4bb6-8de7-bafd3a1d54ab` and Todoless migrations 0005–0009
+are recorded in [DELIVERY_PILOT_RELEASE.md](./DELIVERY_PILOT_RELEASE.md); personal
+acceptance remains pending. A later combined rollout must apply HopKit migration
+0017 before code, preserve live settings/secrets and verify the existing Delivery
+preview connection. Do not deploy checked-in disabled integration defaults.
+
+## HopKit production domain — 2026-10-23 (live)
+
+The user approved the domain-only cutover to **https://hopkit.hiphop.dev**, keeping
+branding for later. Existing Worker `kharidyar` now serves both this hostname and
+`wantkit.todoless.dev`. See [HOPKIT_DOMAIN_RELEASE.md](./HOPKIT_DOMAIN_RELEASE.md)
+for exact settings, provider records, evidence and recovery.
+
+- **Active:** version `11e7a71d-93f2-4903-9071-e238019bac8a` at 100%; deployment
+  `2bc46b9d-8f80-45ad-82bc-c1607ea22cb6`, applied October 22 at 22:17:24 UTC.
+  Source remains `c0b4562`; all four code/sourcemap modules and asset configuration
+  are identical to the previous immutable version. No source rebuild/upload.
+- **Changed:** additive custom domain and Google authorized domain/callback;
+  only BETTER_AUTH_URL, AUTH_TRUSTED_ORIGINS and RESEARCH_BROWSER_ALLOWED_ORIGIN
+  runtime bindings changed. All other bindings/settings and old hostname remain.
+  No credential rotation, data copy, schema migration or resource rename.
+- **Verified:** release smoke on both hosts; 18 additional artifact/discovery/
+  private-rejection checks; fresh Google login on the new host and existing
+  workspace/collection reads. Five public artifacts per host match the baseline.
+- **Follow-up:** existing assistants need reconnecting at the new `/api/mcp`
+  endpoint because the canonical issuer/audience changed. Branding and unpublished
+  General/Home/Delivery work remain separate. No Git commit or push.
+- **Rollback:** redeploy `8232de9d-f03f-469c-8fc3-344a78fe259a` at 100%, verify
+  original origin/settings and public checks, and direct users to the old host.
+  Google/DNS additions remain separately managed. No data rollback is needed.
+
 ## User and partner landing pages — 2026-10-03 (deployed)
 
 Released user-pushed `c0b456257f9710c8beedf7c4e27e401d1c9b6f3f` from the current folder on `main`, preview first, then production, with tag `landing-c0b4562`. Operator: existing Cloudflare OAuth account. Runtime source matched the commit; pre-existing documentation and untracked review artifacts were preserved and excluded from the build. No assistant commit or push.

@@ -48,7 +48,7 @@ function invalidDownloadLocation(reason: DownloadUrlRejection, url?: URL) {
 	return new ApiError(
 		400,
 		"INVALID_MEDIA",
-		`This download location is not supported. CHATGPT_FILE_URL_REJECTED ${JSON.stringify(diagnostic)}. Share this redacted diagnostic with WantKit support. Do not construct a different URL or retry with a new operation ID.`,
+		`This download location is not supported. CHATGPT_FILE_URL_REJECTED ${JSON.stringify(diagnostic)}. Share this redacted diagnostic with HopKit support. Do not construct a different URL or retry with a new operation ID.`,
 	);
 }
 

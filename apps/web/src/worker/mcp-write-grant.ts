@@ -18,7 +18,7 @@ export async function requireActiveWriteGrant(env: Env, actor: McpActor) {
 		!mcpUserAllowed(env, actor.userId) ||
 		!actor.scopes.includes(mcpWriteScope)
 	)
-		throw forbidden("Reconnect with write access to change WantKit.");
+		throw forbidden("Reconnect with write access to change HopKit.");
 	const active = await env.DB.prepare(
 		`select a.expires_at, a.scopes as token_scopes,c.scopes as client_scopes from oauth_access_token a
     join oauth_client c on c.client_id=a.client_id and c.user_id=a.user_id

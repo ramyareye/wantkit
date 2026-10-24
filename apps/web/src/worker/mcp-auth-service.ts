@@ -52,7 +52,7 @@ export async function listMcpConnections(
 		endpoint: `${bindings.BETTER_AUTH_URL}${mcpPath}`,
 		connections: clients.map((client) => ({
 			id: client.client_id,
-			name: client.client_name ?? "WantKit connector",
+			name: client.client_name ?? "HopKit connector",
 			redirectUris: client.redirect_uris,
 			allowWrites: client.scope?.split(" ").includes(mcpWriteScope) ?? false,
 		})),

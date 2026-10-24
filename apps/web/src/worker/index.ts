@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { deliveryRoutes } from "./delivery-routes";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 
@@ -116,6 +117,7 @@ app.get("/api/session", requireSession, (context) => {
 });
 
 const apiRoutes = new Hono<WorkerAppEnv>()
+	.route("/", deliveryRoutes)
 	.route("/", localCodexRoutes)
 	.route("/", mcpRoutes)
 	.route("/", collaborationExperienceRoutes)

@@ -1,7 +1,17 @@
-# WantKit Project Specification
+# HopKit Project Specification
+
+**Current checkpoint — 2026-10-24:** HopKit branding, General/Home task 3 and the
+existing Delivery/personal portfolio work are ready for exact commit review in
+this folder. Browser checks and the combined 387-test quality gate pass; eight
+additional R2 helper tests pass. No deployment is authorized for this pass.
+Production retains the domain-only release; a separate Delivery-only preview is
+recorded in DELIVERY_PILOT_RELEASE.md. Life Planner remains a roadmap. Follow
+[HOPKIT_COMBINED_HANDOFF.md](./HOPKIT_COMBINED_HANDOFF.md), then rename the folder
+last. The dated implementation/release checkpoints below are historical.
 
 - Status: Approved by the product owner
 - Last updated: 2026-10-04
+- Planning addendum: 2026-10-23 — [HopKit Life Planner](./LIFE_PLANNER.md), requested for the roadmap only; current implementation/release scope is unchanged.
 - Implementation status: Tasks 1 through 11, private media/floor plans, the bounded ChatGPT visual pilot, product photo imports, horizontal comparison and compact product details are implemented. Historical checkpoints below retain their original dates; HANDOFF and RELEASE describe the latest deployed state.
 - Release status: WantKit, including separate user and partner landing pages, saved appearance and sampled backend monitoring, is deployed to preview and production at https://wantkit.todoless.dev from `c0b456257f9710c8beedf7c4e27e401d1c9b6f3f` (2026-10-03). Launch verification is user-confirmed complete; assistant integrations remain owner-only. Both uptime monitors were verified Up; email-delivery testing is user-confirmed complete. See [RELEASE.md](./RELEASE.md).
 
@@ -30,6 +40,10 @@ This is the current agreed order, superseding older queues below. Dark mode and 
 
 - **Food:** meals, ingredients, pantry and shopping lists; detailed design remains deferred as recorded in GENERALIZATION.md.
 - **Activity planner — added 2026-10-05:** concerts, shows, art exhibitions and outings. Explore event shortlists, dates/venues, ticket links/prices, companions and attendance plans in a later design task. Priority remains undecided; the current General/Home implementation queue stays unchanged. See [GENERALIZATION.md](./GENERALIZATION.md#activity-mode--future-idea).
+
+### Life Planner — planned follow-up, 2026-10-23
+
+[LIFE_PLANNER.md](./LIFE_PLANNER.md) records the user's flexible daily/weekly planning requirements: editable sleep/meals/8-hour work anchors; Normal, Busy and Emergency days; two gym sessions plus volleyball; linked groceries, meals, shopping, chores and personal tasks; optional 0–2-hour projects; late nights/recovery; and postponing/skipping without automatic backlog growth. The experience is a small morning overview and five-minute evening plan, with no rigid calendar or unnecessary notifications. Reuse existing planning records and implement only missing capabilities. Day modes are distinct from collection modes. This addition authorizes planning only, does not expand the combined branding/General/Home/Delivery release, and does not select the next implementation task.
 
 ### Deferred research — Home
 

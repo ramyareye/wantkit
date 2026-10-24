@@ -315,7 +315,7 @@ function publicRun(row: RunRow) {
 		reportedModel: row.reported_model,
 		errorCode: row.error_code,
 		notice:
-			"ChatGPT generates in your own conversation using your plan allowance. This run does not call an image API. Interpret drawings as unverified observations; never guess missing dimensions. Imported outputs are AI drafts, not measured plans. Model and prompt attribution is assistant-reported. Review the image in WantKit before explicitly choosing it as cover.",
+			"ChatGPT generates in your own conversation using your plan allowance. This run does not call an image API. Interpret drawings as unverified observations; never guess missing dimensions. Imported outputs are AI drafts, not measured plans. Model and prompt attribution is assistant-reported. Review the image in HopKit before explicitly choosing it as cover.",
 	});
 }
 export async function readVisualRun(ctx: Context, id: string) {

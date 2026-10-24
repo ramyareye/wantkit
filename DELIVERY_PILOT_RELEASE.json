@@ -1,0 +1,293 @@
+{
+  "format": 1,
+  "prepared_at": "2026-10-23 Europe/Amsterdam",
+  "deployable": false,
+  "status": "Exact candidate deployed to existing preview; production unchanged; personal signup/shared workspace and two-person acceptance pending",
+  "base_commit": "c0b456257f9710c8beedf7c4e27e401d1c9b6f3f",
+  "working_head": "bfcdcec3efc81fd9d387e38b73e8fb1fa7e5113a",
+  "patch": "DELIVERY_PILOT.patch",
+  "patch_sha256": "0d0506c6280a0454fc68bfd803d54bc206740db11bf29e9417ad07c2deef7376",
+  "hopkit_migrations": [],
+  "excluded": [
+    "General/Home runtime and migration0017",
+    "separate domain/resource/branding release work",
+    "package/source rename after deployed baseline",
+    "real credentials/configuration",
+    "demo fixtures from deployed bundle"
+  ],
+  "blockers": [
+    "User-managed Todoless signup for both emails and developer HopKit signup",
+    "Explicit shared rehearsal workspace invitation approval; verify Google Testing audience if needed",
+    "Authenticated two-person synthetic queue, hours, approval, totals and CSV acceptance",
+    "Separate production UI promotion and real task import approvals"
+  ],
+  "files": [
+    {
+      "path": "apps/web/scripts/delivery-fixture.tsx",
+      "base_sha256": null,
+      "candidate_sha256": "fcb0c6e714639ac8fd55f4ea21f9e99635f8638fed7049c68449acbbc7e1331b",
+      "kind": "validation_only"
+    },
+    {
+      "path": "apps/web/scripts/test-delivery-local.ts",
+      "base_sha256": null,
+      "candidate_sha256": "e8d7f193d573183dd8d9e92a79f9377e50951c423c51c3bf5664f2dcff732803",
+      "kind": "validation_only"
+    },
+    {
+      "path": "apps/web/src/react-app/App.tsx",
+      "base_sha256": "bb53cd2263c5e73bc94f1f351011643fb94606d50eda5aa0189df4b17e01c4a4",
+      "candidate_sha256": "e84ffe7d2ee1583640e5440d77bac50dadee63efd0121794965d0a1ff24fda6f",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/DeliveryPage.css",
+      "base_sha256": null,
+      "candidate_sha256": "b7ea6eaeb9635ebf22bf27ecac99e3a0bfdc5bea5a76ce73220934ccf0f7be5e",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/DeliveryPage.tsx",
+      "base_sha256": null,
+      "candidate_sha256": "7cbe6b39e79fe9a9aac090af760a34a6a18fb361ac14c0a7618bf785db22c4d7",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/DeliveryPortfolio.tsx",
+      "base_sha256": null,
+      "candidate_sha256": "3a19a71a0a433f06a6bbad568849485578c81d991ccfb5765c2ee608bb5a376d",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/DeliveryQueue.tsx",
+      "base_sha256": null,
+      "candidate_sha256": "d83bdbcd29af0bd560734fc0ec881ee8e338d92c28a623be2816a1c887c1ef0c",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/DeliveryTaskUpdates.tsx",
+      "base_sha256": null,
+      "candidate_sha256": "c122371106c178a15d4703a2d7645239b29393ecb5fc7f91c6903f586ec1856a",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/DeliveryWeeks.tsx",
+      "base_sha256": null,
+      "candidate_sha256": "e3d7471199a57f22aa913dd93e2ab68093bcc1a58264c0da0fe3e618318be0e1",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/PlanningDashboard.tsx",
+      "base_sha256": "098baa483c1977efa8eecfdc2c426e7d87654444c151416230d9a8faf68a0d1c",
+      "candidate_sha256": "4e691e4dd0b00fb8e1d89a60a1c2950f85b20dbe1cefaacc42d6c1306559a50a",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/delivery-client.test.ts",
+      "base_sha256": null,
+      "candidate_sha256": "b31d6d55721c77a1c4aa6b24de735da742f22802c648789dfe60c0665491e660",
+      "kind": "validation_only"
+    },
+    {
+      "path": "apps/web/src/react-app/delivery-client.ts",
+      "base_sha256": null,
+      "candidate_sha256": "35d29a2b2fa177b0d1528dc81d08bf059ada89e1e95639bfb2765fbf67d1dc86",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/delivery-task-updates.test.tsx",
+      "base_sha256": null,
+      "candidate_sha256": "1c4c54b0d5995d71a9a245c5191a47fc9bdbed017365c41b7300d38554542936",
+      "kind": "validation_only"
+    },
+    {
+      "path": "apps/web/src/react-app/delivery-task-updates.ts",
+      "base_sha256": null,
+      "candidate_sha256": "71c0a28093027d7f25916f6deaf45ed48ac3ad4b5498f86248aa455402b1bee9",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/delivery-types.ts",
+      "base_sha256": null,
+      "candidate_sha256": "33fff845c04f512341e515fe60aa562c2dc2a2eed269247c98dee3f910654995",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/portfolio-client.test.tsx",
+      "base_sha256": null,
+      "candidate_sha256": "28094c261a676f5aab64003245e90f91f4174d543343cd7b56b520f6b881a3ac",
+      "kind": "validation_only"
+    },
+    {
+      "path": "apps/web/src/react-app/portfolio-client.ts",
+      "base_sha256": null,
+      "candidate_sha256": "9e127902b3652428991a7c3981c3d28c2af4c32aacaaad0e4ccc5e5e62d0f445",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/react-app/use-delivery-resource.ts",
+      "base_sha256": null,
+      "candidate_sha256": "5055aa36607b43020b3d9772521f5d57a9270fbd921d0fc368bd1f4476d4fce3",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/worker/delivery-proxy.ts",
+      "base_sha256": null,
+      "candidate_sha256": "62791c2471be8af3d58501279948049230d8581b57a91986e3ab202da5043a1b",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/worker/delivery-routes.ts",
+      "base_sha256": null,
+      "candidate_sha256": "cd7934395a74f1545918967f01fb114214f60676a0ec112599418cdb24ea12ce",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/src/worker/index.ts",
+      "base_sha256": "9fd534d63dd7b0eb8f7eda02a6892ba6fb7cc31d5850bac947bc13bcd42b7065",
+      "candidate_sha256": "de72b5b1f9bbab0777d4913e94e400b5c5c557ea8045c9cffeb16cd47a2f63ca",
+      "kind": "runtime"
+    },
+    {
+      "path": "apps/web/test/delivery-proxy.test.ts",
+      "base_sha256": null,
+      "candidate_sha256": "1f5e1baaf73717e23c2a334ced1765f3a22e53659dc580f9f5b6874b5661ffe2",
+      "kind": "validation_only"
+    }
+  ],
+  "hosted_context": {
+    "source": "HOPKIT_DOMAIN_RELEASE.md, 2026-10-23; recheck before release",
+    "production_origin": "https://hopkit.hiphop.dev",
+    "retained_old_origin": "https://wantkit.todoless.dev",
+    "production_version": "11e7a71d-93f2-4903-9071-e238019bac8a",
+    "preview_origin": "https://kharidyar-preview.formahsa.workers.dev",
+    "preserve_live_bindings": true,
+    "note": "Patch is source-only. Never restore baseline origin/settings over the completed domain cutover. Rebase/review if a separate branding release lands first."
+  },
+  "local_validation": {
+    "focused_ui_client_tests": 26,
+    "focused_proxy_tests": 8,
+    "real_disposable_d1_updates": "pass",
+    "browser_progress_blocker_return_feedback": "pass, synthetic contributor and owner",
+    "lint_typecheck_current_checkout_build": "pass",
+    "baseline_candidate_built": true,
+    "portfolio_api_tests": 7,
+    "api_full_suite": "53 tests / 701 assertions, typecheck, API behavior, smoke and MCP passed",
+    "portfolio_browser": "project selection, three zero days, 120 minute day, retained priority and pause/resume note passed",
+    "baseline_files_verified": 273,
+    "baseline_focused_tests": 34,
+    "baseline_lint_typecheck_build": "pass",
+    "compiled_worker_signed_sessions_and_recovery": "pass",
+    "exact_candidate_real_d1_updates": "pass",
+    "api_recovery": "populated migrations/failure rollback, full freeze and hardened resume passed"
+  },
+  "personal_portfolio": {
+    "shared_daily_minutes": {
+      "minimum": 0,
+      "maximum": 120,
+      "unset": null
+    },
+    "new_api_migration": "0009_personal_portfolio.sql",
+    "live_setup_performed": false,
+    "scope": "Own selected projects across workspaces; availability separate from actual hours; pause preserves task state/active slot."
+  },
+  "candidate_directory": "/private/tmp/todoless-hopkit-release-candidate-2026-10-23",
+  "candidate_directory_explicitly_approved": true,
+  "artifacts": [
+    {
+      "path": "client/_headers",
+      "sha256": "26d4d52a675fe1935bd9936b239de9809bfca4747b49e2a976e93bd9a9e5046b",
+      "bytes": 524
+    },
+    {
+      "path": "client/assets/DeliveryPage-DC2cBD-S.js",
+      "sha256": "2b4983f0950b21a31663ebd94085e17a1b303919ecd550882b416f4def18e565",
+      "bytes": 43008
+    },
+    {
+      "path": "client/assets/DeliveryPage-DoxxiibN.css",
+      "sha256": "95a0e27781cbc33b8cdfdd1886e41a8946b7e4f09fc1acbab7e58937fe1b666f",
+      "bytes": 6831
+    },
+    {
+      "path": "client/assets/index-DkE6Pbvc.css",
+      "sha256": "b67c80b7d4c6bf05e0503ceb1efe68f34b717aa0aa5a038df00dcea776d85ab9",
+      "bytes": 129533
+    },
+    {
+      "path": "client/assets/index-sbZnudIq.js",
+      "sha256": "617348eb4086e4d5a77d26fc04856938b454efba5cc6f98a81f41a259e18372b",
+      "bytes": 676348
+    },
+    {
+      "path": "client/index.html",
+      "sha256": "ce49fd96df8da1885d76ef47786145594c4a27e095fbc797178f8e5947519225",
+      "bytes": 1037
+    },
+    {
+      "path": "client/kharidyar-mark.svg",
+      "sha256": "a6d899fee5d3b133cc70109f09624532b7a67f71736149bc6786f255c388041d",
+      "bytes": 234
+    },
+    {
+      "path": "client/theme-init.js",
+      "sha256": "644bfdcb741d5fa554a4e68a6a4bf65447928ee4b15c082e22613b8f5bdb7187",
+      "bytes": 692
+    },
+    {
+      "path": "client/vite.svg",
+      "sha256": "4a748afd443918bb16591c834c401dae33e87861ab5dbad0811c3a3b4a9214fb",
+      "bytes": 1497
+    },
+    {
+      "path": "client/wantkit-mark.svg",
+      "sha256": "1e274071fd42948ef29b8f7699806d6579ddf2dc0f4e72c426bca2a12bc5bb7c",
+      "bytes": 256
+    },
+    {
+      "path": "kharidyar/assets/index-DUyrdEn9.js",
+      "sha256": "14afdf8b352ee222a866482018b42df3e04c26f14f5888c83f7a118c0baedba4",
+      "bytes": 13941
+    },
+    {
+      "path": "kharidyar/assets/worker-entry-DTC8mPFk.js",
+      "sha256": "e2bbb5f741415722cfc7cd416055805940c8d8e075e7176630e1b754980f6084",
+      "bytes": 6045479
+    },
+    {
+      "path": "kharidyar/index.js",
+      "sha256": "62fa5afd6933b25291c5d6cab5ea170e04f168d3ac5735560d42e38bd0a5a24b",
+      "bytes": 535
+    }
+  ],
+  "api_recovery_artifact": {
+    "name": "recovery",
+    "file": "recovery.mjs",
+    "sha256": "63d7bd67b7e59820ac1639b23d8c8a480778f121a634a08ea046ee9366b2fa36",
+    "bytes": 990
+  },
+  "validation_record": "../todoless/docs/planning/release-candidate-validation-2026-10-23.json",
+  "deployment_metadata_warning": "Do not deploy baseline generated wrangler.json; preserve current bindings/auth/domain settings. Delivery origin is active only on preview. Production promotion remains unapproved.",
+  "production_promotion_authorized": false,
+  "live_preview_config": {
+    "TODOLESS_API_ORIGIN": "https://todoless.dev"
+  },
+  "hosted_rehearsal": {
+    "record": "../todoless/docs/planning/hosted-rehearsal-2026-10-23.json",
+    "preview_version": "dfd648fb-6c4c-4bb6-8de7-bafd3a1d54ab",
+    "production_version_unchanged": "11e7a71d-93f2-4903-9071-e238019bac8a",
+    "public_checks_passed": 26,
+    "api_migrations_applied": [
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009"
+    ],
+    "personal_acceptance": "pending",
+    "signup_left_to_users": true,
+    "invitations_sent": false,
+    "real_import": false,
+    "git_commit_push": false
+  }
+}

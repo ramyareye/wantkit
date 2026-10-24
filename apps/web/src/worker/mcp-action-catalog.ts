@@ -69,7 +69,7 @@ function action<S extends z.ZodRawShape>(
 			name !== "prepare_visual_edit" &&
 			!name.startsWith("create_") &&
 			!name.startsWith("restore_"),
-		description: `${title}. ${confirm || name === "update_concept_image" ? "May require the user's confirmation in WantKit; return the approval link and wait for its receipt." : "Applies immediately using the account's current permissions."} Reuse the same operationId when retrying; never retry an uncertain result with a new ID.`,
+		description: `${title}. ${confirm || name === "update_concept_image" ? "May require the user's confirmation in HopKit; return the approval link and wait for its receipt." : "Applies immediately using the account's current permissions."} Reuse the same operationId when retrying; never retry an uncertain result with a new ID.`,
 		parse: (args: unknown): Record<string, unknown> => schema.parse(args),
 		requiresConfirmation: (args: unknown) =>
 			typeof confirm === "boolean" ? confirm : confirm(schema.parse(args)),
@@ -87,7 +87,7 @@ async function sharing(
 	value?: unknown,
 ) {
 	if (!ctx.approvalHeaders)
-		throw forbidden("Sharing requires approval in WantKit.");
+		throw forbidden("Sharing requires approval in HopKit.");
 	const headers = new Headers();
 	for (const key of ["cookie", "origin", "cf-connecting-ip"]) {
 		const value = ctx.approvalHeaders.get(key);
@@ -104,7 +104,7 @@ async function sharing(
 	);
 	if (!response.ok)
 		throw conflict(
-			"Sharing was not applied. Check your current access and the target in WantKit before retrying.",
+			"Sharing was not applied. Check your current access and the target in HopKit before retrying.",
 		);
 	return response.json();
 }

@@ -1262,3 +1262,24 @@
 		block-size: 4rem;
 	}
 }
+
+/* Keep shared planning concise while retaining optional Home content. */
+.saved-home-details,
+.brief-preferences {
+  margin-block-start: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  min-inline-size: 0;
+}
+.saved-home-details > summary,
+.brief-preferences > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.saved-home-details > p {
+  color: var(--ink-muted);
+}
+.brief-preferences .brief-form-section {
+  margin-block-start: 1rem;
+}

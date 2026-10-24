@@ -74,12 +74,12 @@ export function registerMcpWriteTools(server: McpServer, ctx: ActionContext) {
 						content: [
 							{
 								type: "text",
-								text: "This connection has read-only access. Create a connection with write access in WantKit, then reconnect your assistant.",
+								text: "This connection has read-only access. Create a connection with write access in HopKit, then reconnect your assistant.",
 							},
 						],
 						_meta: {
 							"mcp/www_authenticate": [
-								`Bearer resource_metadata="${ctx.env.BETTER_AUTH_URL}/.well-known/oauth-protected-resource/api/mcp", error="insufficient_scope", error_description="Enable write access in WantKit and reconnect", scope="wantkit:read wantkit:write"`,
+								`Bearer resource_metadata="${ctx.env.BETTER_AUTH_URL}/.well-known/oauth-protected-resource/api/mcp", error="insufficient_scope", error_description="Enable write access in HopKit and reconnect", scope="wantkit:read wantkit:write"`,
 							],
 						},
 					};

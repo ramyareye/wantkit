@@ -71,7 +71,7 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
 		<div className={compact ? "brand brand--compact" : "brand"}>
 			<img
 				className="brand__mark"
-				src="/wantkit-mark.svg"
+				src="/hopkit-mark.svg"
 				width="40"
 				height="40"
 				alt=""

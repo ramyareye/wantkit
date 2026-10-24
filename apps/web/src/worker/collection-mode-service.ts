@@ -126,7 +126,7 @@ export async function updateCollectionMode(
 	const { row } = await modeState(input, true);
 	if (row.mode !== null && !isCollectionMode(row.mode))
 		throw conflict(
-			"This Collection uses a newer mode. Update WantKit before changing it.",
+			"This Collection uses a newer mode. Update HopKit before changing it.",
 		);
 	// The conditional UPSERT rechecks scope grants and archive state at write time.
 	// Revision zero can only create settings for a legacy Collection.

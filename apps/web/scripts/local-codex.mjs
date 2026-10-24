@@ -38,7 +38,7 @@ export function validOrigin(value) {
     )
   )
     throw new Error(
-      "Use an HTTPS WantKit origin, or HTTP localhost for development.",
+      "Use an HTTPS HopKit origin, or HTTP localhost for development.",
     );
   return url.origin;
 }
@@ -133,14 +133,14 @@ export async function apiRequest(connection, path, body = {}, fetcher = fetch) {
     const error = new Error(
       response.status === 401 || response.status === 403
         ? "Pairing expired, disconnected, or access changed. Pair again."
-        : `WantKit request failed (${response.status}).`,
+        : `HopKit request failed (${response.status}).`,
     );
     error.status = response.status;
     throw error;
   }
   const text = await response.text();
   if (text.length > 32_768)
-    throw new Error("WantKit response exceeds the runner limit.");
+    throw new Error("HopKit response exceeds the runner limit.");
   return JSON.parse(text);
 }
 function capturedProcess(
@@ -402,7 +402,7 @@ async function main() {
       output,
       terminal: Boolean(process.stdin.isTTY),
     });
-    process.stdout.write("Paste the WantKit pairing token (hidden): ");
+    process.stdout.write("Paste the HopKit pairing token (hidden): ");
     hidden = true;
     const token = (await reader.question("")).trim();
     reader.close();

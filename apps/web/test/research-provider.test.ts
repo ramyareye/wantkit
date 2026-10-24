@@ -78,7 +78,7 @@ describe("Research provider boundary", () => {
         JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Product",
-          brand: { name: "WantKit Fixtures" },
+          brand: { name: "HopKit Fixtures" },
           category: "Floor lamp",
           name: "Warm oak paper lamp",
           offers: {

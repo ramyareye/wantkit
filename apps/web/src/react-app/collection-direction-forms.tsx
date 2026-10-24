@@ -5,7 +5,7 @@ import type {
   ConceptInput,
   ConceptResource,
 } from "@wantkit/contracts";
-import { inputHexColorPattern } from "@wantkit/domain";
+import { inputHexColorPattern, type CollectionMode } from "@wantkit/domain";
 import {
   useState,
   type Dispatch,
@@ -202,11 +202,13 @@ function PaletteGroupEditor({
 }
 
 export function CollectionBriefForm({
+  mode,
   busy,
   initial,
   onClose,
   onSubmit,
 }: {
+  mode: CollectionMode;
   busy: boolean;
   initial: CollectionBriefResource | null;
   onClose: () => void;
@@ -340,7 +342,11 @@ export function CollectionBriefForm({
                 autoFocus
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder={t("brief.titlePlaceholder")}
+                placeholder={t(
+                  mode === "home"
+                    ? "brief.titlePlaceholder"
+                    : "brief.general.titlePlaceholder",
+                )}
                 maxLength={120}
               />
             </label>
@@ -352,42 +358,6 @@ export function CollectionBriefForm({
                 placeholder={t("brief.descriptionPlaceholder")}
                 maxLength={4_000}
                 rows={3}
-              />
-            </label>
-            <label className="field">
-              <span className="field__label">
-                {t("brief.keywords")}
-                <small>{t("brief.listHint")}</small>
-              </span>
-              <textarea
-                value={keywords}
-                onChange={(event) => setKeywords(event.target.value)}
-                placeholder={t("brief.keywordsPlaceholder")}
-                rows={2}
-              />
-            </label>
-            <label className="field">
-              <span className="field__label">
-                {t("brief.materials")}
-                <small>{t("brief.listHint")}</small>
-              </span>
-              <textarea
-                value={materials}
-                onChange={(event) => setMaterials(event.target.value)}
-                placeholder={t("brief.materialsPlaceholder")}
-                rows={2}
-              />
-            </label>
-            <label className="field">
-              <span className="field__label">
-                {t("brief.preferredBrands")}
-                <small>{t("brief.listHint")}</small>
-              </span>
-              <textarea
-                value={preferredBrands}
-                onChange={(event) => setPreferredBrands(event.target.value)}
-                placeholder={t("brief.preferredBrandsPlaceholder")}
-                rows={2}
               />
             </label>
             <label className="field">
@@ -419,7 +389,11 @@ export function CollectionBriefForm({
               <textarea
                 value={requirements}
                 onChange={(event) => setRequirements(event.target.value)}
-                placeholder={t("brief.requirementsPlaceholder")}
+                placeholder={t(
+                  mode === "home"
+                    ? "brief.requirementsPlaceholder"
+                    : "brief.general.requirementsPlaceholder",
+                )}
                 maxLength={4_000}
                 rows={3}
               />
@@ -429,7 +403,11 @@ export function CollectionBriefForm({
               <textarea
                 value={thingsToAvoid}
                 onChange={(event) => setThingsToAvoid(event.target.value)}
-                placeholder={t("brief.thingsToAvoidPlaceholder")}
+                placeholder={t(
+                  mode === "home"
+                    ? "brief.thingsToAvoidPlaceholder"
+                    : "brief.general.thingsToAvoidPlaceholder",
+                )}
                 maxLength={4_000}
                 rows={3}
               />
@@ -447,29 +425,82 @@ export function CollectionBriefForm({
           </div>
         </section>
 
-        <section className="brief-form-section">
-          <div className="brief-form-section__heading">
-            <span aria-hidden="true">02</span>
-            <div>
-              <h3>{t("palette.title")}</h3>
-              <p>{t("palette.description")}</p>
+        <details className="brief-preferences" open={mode === "home"}>
+          <summary>{t("brief.optionalPreferences")}</summary>
+          <section className="brief-form-section">
+            <div className="brief-form-grid">
+              <label className="field">
+                <span className="field__label">
+                  {t("brief.keywords")}
+                  <small>{t("brief.listHint")}</small>
+                </span>
+                <textarea
+                  value={keywords}
+                  onChange={(event) => setKeywords(event.target.value)}
+                  placeholder={t(
+                    mode === "home"
+                      ? "brief.keywordsPlaceholder"
+                      : "brief.general.keywordsPlaceholder",
+                  )}
+                  rows={2}
+                />
+              </label>
+              <label className="field">
+                <span className="field__label">
+                  {t("brief.materials")}
+                  <small>{t("brief.listHint")}</small>
+                </span>
+                <textarea
+                  value={materials}
+                  onChange={(event) => setMaterials(event.target.value)}
+                  placeholder={t(
+                    mode === "home"
+                      ? "brief.materialsPlaceholder"
+                      : "brief.general.materialsPlaceholder",
+                  )}
+                  rows={2}
+                />
+              </label>
+              <label className="field">
+                <span className="field__label">
+                  {t("brief.preferredBrands")}
+                  <small>{t("brief.listHint")}</small>
+                </span>
+                <textarea
+                  value={preferredBrands}
+                  onChange={(event) => setPreferredBrands(event.target.value)}
+                  placeholder={t(
+                    mode === "home"
+                      ? "brief.preferredBrandsPlaceholder"
+                      : "brief.general.preferredBrandsPlaceholder",
+                  )}
+                  rows={2}
+                />
+              </label>
             </div>
-          </div>
-          <div className="palette-editor">
-            <PaletteGroupEditor
-              colors={coreColors}
-              kind="core"
-              otherColors={supportingColors}
-              setColors={setCoreColors}
-            />
-            <PaletteGroupEditor
-              colors={supportingColors}
-              kind="supporting"
-              otherColors={coreColors}
-              setColors={setSupportingColors}
-            />
-          </div>
-        </section>
+            <div className="brief-form-section__heading">
+              <span aria-hidden="true">02</span>
+              <div>
+                <h3>{t("palette.title")}</h3>
+                <p>{t("palette.description")}</p>
+              </div>
+            </div>
+            <div className="palette-editor">
+              <PaletteGroupEditor
+                colors={coreColors}
+                kind="core"
+                otherColors={supportingColors}
+                setColors={setCoreColors}
+              />
+              <PaletteGroupEditor
+                colors={supportingColors}
+                kind="supporting"
+                otherColors={coreColors}
+                setColors={setSupportingColors}
+              />
+            </div>
+          </section>
+        </details>
 
         {validationError ? (
           <p className="field-error" role="alert">

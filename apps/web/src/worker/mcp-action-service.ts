@@ -90,7 +90,7 @@ function receipt(env: Env, row: ActionRow): McpActionReceipt {
 				: row.status;
 	const messages: Record<McpActionReceipt["status"], string> = {
 		pending:
-			"Awaiting the user's approval in WantKit. No change has been applied.",
+			"Awaiting the user's approval in HopKit. No change has been applied.",
 		running:
 			"This operation is being processed. Check this receipt; do not create another operation ID.",
 		succeeded:

@@ -672,6 +672,12 @@ export function PlanningDashboard({
 		api.readCollectionMode,
 		selectedCollectionId,
 	);
+	const effectiveMode = modeState.data?.settings.effectiveMode ?? "general";
+	const allowHomeDetails = modeState.phase === "ready" &&
+		modeState.data?.settings.source !== "unsupported";
+	const [homeDetailsCollectionId, setHomeDetailsCollectionId] = useState<string | null>(null);
+	const homeDetailsOpen = allowHomeDetails && effectiveMode === "general" &&
+		homeDetailsCollectionId === selectedCollectionId;
 	const rollupState = useCollectionResource(
 		api.readCollectionRollup,
 		selectedCollectionId,
@@ -684,7 +690,7 @@ export function PlanningDashboard({
 	const conceptState = useCollectionResource(
 		api.readConcept,
 		selectedCollectionId,
-		collectionView === "direction",
+		collectionView === "direction" && (effectiveMode === "home" || homeDetailsOpen),
 	);
 	const mediaState = useCollectionResource(
 		api.readConceptMedia,
@@ -701,7 +707,6 @@ export function PlanningDashboard({
 		modeState.data?.settings.source !== "unsupported" &&
 		conceptState.phase === "ready" &&
 		Boolean(conceptState.data?.canEdit);
-	const effectiveMode = modeState.data?.settings.effectiveMode ?? "general";
 	const presenter = collectionPresenters[effectiveMode];
 	const activeCollectionView = presenter.views.includes(collectionView)
 		? collectionView
@@ -1096,6 +1101,7 @@ export function PlanningDashboard({
 				value,
 			);
 			modeState.replace(response);
+			setHomeDetailsCollectionId(null);
 			if (
 				!collectionPresenters[response.settings.effectiveMode].views.includes(
 					collectionView,
@@ -1518,6 +1524,7 @@ export function PlanningDashboard({
 									<span dir="ltr">{user.email}</span>
 								</div>
 							</div>
+							<a className="text-button" href="/delivery" lang="en">Delivery</a>
 							<a className="text-button" href="/connectors">
 								{t("connectors.title")}
 							</a>
@@ -1781,6 +1788,12 @@ export function PlanningDashboard({
 												aria-label={t(presenter.directionLabel)}
 											>
 												<CollectionDirection
+													key={selectedCollection.id}
+													collectionId={selectedCollection.id}
+													mode={effectiveMode}
+													allowHomeDetails={allowHomeDetails}
+													homeDetailsOpen={homeDetailsOpen}
+													onHomeDetailsToggle={(open) => setHomeDetailsCollectionId(open ? selectedCollection.id : null)}
 													brief={brief}
 													busy={busy}
 													canEditBrief={
@@ -2087,6 +2100,7 @@ export function PlanningDashboard({
 				/>
 			) : editor?.kind === "brief-edit" ? (
 				<CollectionBriefForm
+					mode={effectiveMode}
 					busy={busy}
 					initial={brief}
 					onClose={() => setEditor(null)}

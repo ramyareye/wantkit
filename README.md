@@ -1,10 +1,10 @@
-# WantKit
+# HopKit
 
-WantKit is a private, collaborative purchase-planning application. Its current web foundation is a React + Vite client backed by a Hono Cloudflare Worker, D1, private R2 storage, Cloudflare Images, Drizzle, and Better Auth in a Bun workspace.
+HopKit is the chosen name for this private, collaborative planner, with a future direction covering shopping, food planning and travel. The current application focuses on purchase planning. Its web foundation is a React + Vite client backed by a Hono Cloudflare Worker, D1, private R2 storage, Cloudflare Images, Drizzle, and Better Auth in a Bun workspace.
 
 The approved product specification, domain model, architecture, and roadmap are in [`PROJECT.md`](./PROJECT.md). Repository workflow and approval rules are in [`AGENTS.md`](./AGENTS.md).
 
-The project name is **WantKit**, the root package is `wantkit`, and workspace packages use `@wantkit/*`. The GitHub repository is [`ramyareye/wantkit`](https://github.com/ramyareye/wantkit); the local directory still uses `kharidyar`. Existing Cloudflare resource names are retained for deployment continuity; see [`BRANDING.md`](./BRANDING.md) for the remaining rename steps.
+**HopKit** is live at [hopkit.hiphop.dev](https://hopkit.hiphop.dev) after the approved domain-only cutover on 2026-10-23. HopKit website branding is now implemented locally for the combined release; the deployed UI still says WantKit. Google's consent app name is already HopKit. The root package remains `wantkit`, workspace packages remain `@wantkit/*`, GitHub remains [`ramyareye/wantkit`](https://github.com/ramyareye/wantkit), and this checkout remains `/Users/reza/Documents/web/wantkit` until the requested final folder rename. Cloudflare continues to use the existing Worker and data resources. See [`HOPKIT_DOMAIN_RELEASE.md`](./HOPKIT_DOMAIN_RELEASE.md) for verification and recovery, [`CLOUDFLARE_RENAME.md`](./CLOUDFLARE_RENAME.md) for the deferred preview-first resource migration, and [`BRANDING.md`](./BRANDING.md) for the current branding checkpoint.
 
 ## Workspace layout
 
@@ -152,9 +152,25 @@ bun run deploy:preview
 bun run db:migrations:list:production
 bun run db:migrate:production
 bun run deploy:production
-bun run release:smoke -- https://wantkit.todoless.dev
+bun run release:smoke -- https://hopkit.hiphop.dev
 ```
 
 Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, private R2 bucket, Images binding, Workflow, Browser Run binding, and secrets. Apply the latest remote D1 migration and set `TAVILY_API_KEY` before deploying; ordinary local commands never mutate remote resources. `bun run deploy` remains an alias for the explicit production deployment. Follow [`RELEASE.md`](./RELEASE.md) for the required preview-first order, recovery points, smoke checks, rollback compatibility rule, D1 Time Travel procedure, and Concept-media deletion boundary.
 
 Cloudflare custom logs and source maps are enabled explicitly for local, preview, and production. Automatic invocation logs are disabled because OAuth callback URLs contain short-lived authorization codes. Application logs therefore use generated request IDs, resource identifiers, and safe reason codes without request query strings, cookies, tokens, provider messages, or private planning content.
+
+## Combined source and Delivery pilot
+
+HopKit branding, General/Home shared briefs and Delivery are prepared together
+for exact commit/push review. See [HOPKIT_COMBINED_HANDOFF.md](./HOPKIT_COMBINED_HANDOFF.md).
+Deployment is paused; the local folder rename is the final step. The lightweight
+[Life Planner](./LIFE_PLANNER.md) is a roadmap, not an implemented feature.
+
+The signed-in **Delivery** screen at `/delivery` uses Todoless for the task queue,
+manual hours and weekly owner/delegate review. Personal keys stay in tab memory;
+no shared task database or persistent credential connection is added. The proxy
+is unconfigured by default. A separately authorized Delivery-only candidate is
+already on the existing preview with the live Todoless backend; production has
+not received Delivery or the combined changes. Personal-account acceptance is
+pending. See [DELIVERY_PILOT_RELEASE.md](./DELIVERY_PILOT_RELEASE.md) for current
+hosted status and [DELIVERY.md](./DELIVERY.md) for the local implementation record.

@@ -7,6 +7,9 @@ import type {
   ConceptResource,
 } from "@wantkit/contracts";
 import { formatMoney } from "@wantkit/i18n";
+import type { CollectionMode } from "@wantkit/domain";
+import { HomeConcept } from "./HomeConcept";
+import { FloorPlans } from "./FloorPlans";
 
 import {
   CollectionResourcePanel,
@@ -175,6 +178,11 @@ function BriefDetails({ brief }: { brief: CollectionBriefResource }) {
 }
 
 export function CollectionDirection({
+  collectionId,
+  mode,
+  homeDetailsOpen,
+  allowHomeDetails,
+  onHomeDetailsToggle,
   brief,
   busy,
   canEditBrief,
@@ -192,6 +200,11 @@ export function CollectionDirection({
   onUpdateImage,
   onUploadImage,
 }: {
+  collectionId: string;
+  mode: CollectionMode;
+  homeDetailsOpen: boolean;
+  allowHomeDetails: boolean;
+  onHomeDetailsToggle: (open: boolean) => void;
   brief: CollectionBriefResource | null;
   busy: boolean;
   canEditBrief: boolean;
@@ -219,13 +232,32 @@ export function CollectionDirection({
         brief.colorPreference.supporting.length > 0),
   );
 
+  const homeConcept = (
+    <HomeConcept
+      concept={concept}
+      status={conceptStatus}
+      canEdit={canEditConcept}
+      busy={busy}
+      onEdit={onEditConcept}
+      onRemove={onRemoveConcept}
+    />
+  );
+
   return (
     <section className="direction-folio" aria-labelledby="direction-heading">
       <header className="direction-folio__header">
         <div>
           <p className="eyebrow">{t("direction.eyebrow")}</p>
-          <h3 id="direction-heading">{t("direction.title")}</h3>
-          <p>{t("direction.description")}</p>
+          <h3 id="direction-heading">
+            {t(mode === "home" ? "direction.title" : "nav.view.references")}
+          </h3>
+          <p>
+            {t(
+              mode === "home"
+                ? "direction.description"
+                : "direction.generalDescription",
+            )}
+          </p>
         </div>
         <div className="direction-folio__actions">
           {canEditBrief ? (
@@ -236,16 +268,6 @@ export function CollectionDirection({
               disabled={busy}
             >
               {brief ? t("brief.edit") : t("brief.create")}
-            </button>
-          ) : null}
-          {canEditConcept ? (
-            <button
-              type="button"
-              className="text-action"
-              onClick={onEditConcept}
-              disabled={busy}
-            >
-              {concept ? t("concept.edit") : t("concept.create")}
             </button>
           ) : null}
         </div>
@@ -275,54 +297,18 @@ export function CollectionDirection({
               <div>
                 <p className="eyebrow">{t("brief.label")}</p>
                 <h4>{t("brief.emptyTitle")}</h4>
-                <p>{t("brief.emptyBody")}</p>
+                <p>
+                  {t(
+                    mode === "home"
+                      ? "brief.emptyBody"
+                      : "brief.generalEmptyBody",
+                  )}
+                </p>
               </div>
             </article>
           )}
         </CollectionResourcePanel>
-        <CollectionResourcePanel
-          status={conceptStatus}
-          label={t("concept.label")}
-        >
-          <article
-            className={
-              concept
-                ? "concept-card"
-                : "direction-empty direction-empty--concept"
-            }
-          >
-            {concept ? (
-              <>
-                <header>
-                  <p className="eyebrow">{t("concept.label")}</p>
-                  <h4 dir="auto">{concept.title}</h4>
-                </header>
-                <p className="concept-card__narrative" dir="auto">
-                  {concept.narrative}
-                </p>
-                {canEditConcept ? (
-                  <button
-                    type="button"
-                    className="text-action text-action--danger"
-                    onClick={onRemoveConcept}
-                    disabled={busy}
-                  >
-                    {t("concept.remove")}
-                  </button>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <span aria-hidden="true">02</span>
-                <div>
-                  <p className="eyebrow">{t("concept.label")}</p>
-                  <h4>{t("concept.emptyTitle")}</h4>
-                  <p>{t("concept.emptyBody")}</p>
-                </div>
-              </>
-            )}
-          </article>
-        </CollectionResourcePanel>
+        {mode === "home" ? homeConcept : null}
         {hasPalette && brief ? (
           <section className="palette-card">
             <header>
@@ -342,6 +328,22 @@ export function CollectionDirection({
           </section>
         ) : null}
       </div>
+      {mode === "general" && allowHomeDetails ? (
+        <details
+          className="saved-home-details"
+          open={homeDetailsOpen}
+          onToggle={(event) => onHomeDetailsToggle(event.currentTarget.open)}
+        >
+          <summary>{t("direction.savedHome")}</summary>
+          <p>{t("direction.savedHomeDescription")}</p>
+          {homeDetailsOpen ? (
+            <>
+              {homeConcept}
+              <FloorPlans key={collectionId} collectionId={collectionId} />
+            </>
+          ) : null}
+        </details>
+      ) : null}
     </section>
   );
 }

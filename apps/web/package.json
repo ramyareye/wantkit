@@ -1,9 +1,9 @@
 {
 	"name": "@wantkit/web",
 	"version": "0.0.0",
-	"description": "WantKit web application and Cloudflare Worker",
+	"description": "HopKit web application and Cloudflare Worker",
 	"cloudflare": {
-		"label": "WantKit",
+		"label": "HopKit",
 		"products": [
 			"Workers"
 		],
@@ -71,6 +71,8 @@
 		"preview": "bun run build:local && vite preview",
 		"release:smoke": "bun run ./scripts/release-smoke.mjs",
 		"test": "vitest run && vitest run --config vitest.mcp.config.ts && vitest run --config vitest.ui.config.ts",
+		"dev:delivery:demo": "bun ./scripts/test-delivery-local.ts --serve",
+		"test:delivery:local": "bun ./scripts/test-delivery-local.ts",
 		"typecheck": "tsc -b",
 		"versions:production": "wrangler versions list --name kharidyar --json"
 	},

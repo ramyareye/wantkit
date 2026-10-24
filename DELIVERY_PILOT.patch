@@ -1,0 +1,5248 @@
+diff --git a/apps/web/scripts/delivery-fixture.tsx b/apps/web/scripts/delivery-fixture.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/web/scripts/delivery-fixture.tsx
+@@ -0,0 +1,139 @@
++// Local test entry only. Never imported by production App.
++import { useState } from "react";
++import { createRoot } from "react-dom/client";
++import { flushSync } from "react-dom";
++import { DeliveryPage } from "../src/react-app/DeliveryPage";
++import { LocaleProvider } from "../src/react-app/LocaleProvider";
++import "../src/react-app/index.css";
++import "../src/react-app/App.css";
++
++export function DemoGuide() {
++	const [busy, setBusy] = useState(false);
++	const [message, setMessage] = useState(
++		"Start as contributor to try the queue and hours. Then switch to owner to review the submitted week.",
++	);
++	async function connect(role: "contributor" | "owner") {
++		setBusy(true);
++		try {
++			const response = await fetch("/__delivery_demo", { cache: "no-store" });
++			if (!response.ok)
++				throw new Error("The local demo is unavailable. Restart its server.");
++			const fixture: {
++				workspace: string;
++				week: string;
++				contributor: string;
++				owner: string;
++			} = await response.json();
++			const disconnect = [
++				...document.querySelectorAll<HTMLButtonElement>(
++					".delivery-connection button",
++				),
++			].find((button) => button.textContent?.includes("Disconnect"));
++			if (disconnect?.disabled)
++				throw new Error(
++					"Finish or retry the pending action before switching roles.",
++				);
++			if (disconnect) flushSync(() => disconnect.click());
++			const input =
++				document.querySelector<HTMLInputElement>('input[name="key"]');
++			if (!input?.form)
++				throw new Error("Open the Delivery connection form first.");
++			input.value = fixture[role];
++			input.form.requestSubmit();
++			await new Promise<void>((resolve, reject) => {
++				const deadline = Date.now() + 15000;
++				const timer = window.setInterval(() => {
++					const select = document.querySelector<HTMLSelectElement>(
++						'select[aria-label="Workspace"]',
++					);
++					if (select?.querySelector(`option[value="${fixture.workspace}"]`)) {
++						clearInterval(timer);
++						select.value = fixture.workspace;
++						select.dispatchEvent(new Event("change", { bubbles: true }));
++						resolve();
++					} else if (Date.now() > deadline) {
++						clearInterval(timer);
++						reject(
++							new Error(
++								"Connection timed out. Check the message below and retry.",
++							),
++						);
++					}
++				}, 50);
++			});
++			setMessage(
++				`Using the ${role}. Test week: ${fixture.week}. All changes are disposable.`,
++			);
++		} catch (error) {
++			setMessage(
++				error instanceof Error ? error.message : "Could not switch demo role.",
++			);
++		} finally {
++			setBusy(false);
++		}
++	}
++	return (
++		<aside
++			aria-label="Local demo controls"
++			style={{
++				maxWidth: 1160,
++				margin: "20px auto 0",
++				padding: 20,
++				border: "2px solid var(--warning-line)",
++				background: "var(--warning-wash)",
++				color: "var(--ink)",
++			}}
++		>
++			<strong>LOCAL DEMO · Fictional data only</strong>
++			<p>
++				No Google login or real API key needed. Data resets when this server
++				stops.
++			</p>
++			<div className="delivery-actions">
++				<button
++					className="button button--primary"
++					disabled={busy}
++					onClick={() => void connect("contributor")}
++				>
++					Use contributor
++				</button>
++				<button
++					className="button button--secondary"
++					disabled={busy}
++					onClick={() => void connect("owner")}
++				>
++					Use owner
++				</button>
++			</div>
++			<p role="status">{busy ? "Switching demo identity..." : message}</p>
++			<details>
++				<summary>What to try</summary>
++				<ol>
++					<li>
++						Task queue: inspect the active task, two ready alternatives and
++						Grow's blocked task. Its owner, reason, next action and dependency
++						are recorded.
++					</li>
++					<li>
++						My hours: add or edit time across Grow and Veloura, confirm it is
++						human time, then submit the week.
++					</li>
++					<li>
++						Use owner: open Weekly approval to approve or return the developer's
++						submission with a reason. The owner cannot approve their own hours.
++					</li>
++					<li>
++						Use contributor again to revise a returned week. Audit history and
++						CSV preserve submitted versus approved time.
++					</li>
++				</ol>
++			</details>
++		</aside>
++	);
++}
++createRoot(document.getElementById("root")!).render(
++	<LocaleProvider initialLocale="en">
++		{window.location.pathname === "/demo" && <DemoGuide />}
++		<DeliveryPage email="fixture@hopkit.example" />
++	</LocaleProvider>,
++);
+diff --git a/apps/web/scripts/test-delivery-local.ts b/apps/web/scripts/test-delivery-local.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/scripts/test-delivery-local.ts
+@@ -0,0 +1,897 @@
++// Synthetic integration only: actual UI + bounded proxy + actual Todoless Worker/D1.
++// Does not load Wrangler configs, .dev.vars, operator credentials or remote bindings.
++// HopKit session enforcement is separately tested with its real Worker/auth middleware.
++import { createRequire } from "node:module";
++import { fileURLToPath } from "node:url";
++import { readdir, readFile, mkdir } from "node:fs/promises";
++import assert from "node:assert/strict";
++import {
++	DeliveryClient,
++	DeliveryError,
++	currentWeek,
++} from "../src/react-app/delivery-client";
++import { forwardDelivery } from "../src/worker/delivery-proxy";
++import {
++	progressCommand,
++	taskUpdates,
++} from "../src/react-app/delivery-task-updates";
++import type {
++	DeliveryCard,
++	TaskHistoryEntry,
++} from "../src/react-app/delivery-types";
++const interactive = Bun.argv.includes("--serve");
++const verifyUpdates = Bun.argv.includes("--verify-updates");
++const demoWeek = currentWeek("Europe/Amsterdam", 1);
++const webRoot = fileURLToPath(new URL("../", import.meta.url));
++const apiRoot =
++	process.env.TODOLESS_SOURCE_ROOT ??
++	fileURLToPath(new URL("../../../../todoless/apps/api/", import.meta.url));
++const require = createRequire(`${apiRoot}/node_modules/wrangler/package.json`);
++const { build } = require("esbuild");
++const { Miniflare } = require("miniflare");
++const chromium =
++	interactive || verifyUpdates
++		? undefined
++		: (await import(process.env.PLAYWRIGHT_MODULE ?? "playwright")).chromium;
++const bundle = await build({
++	absWorkingDir: apiRoot,
++	entryPoints: ["src/index.ts"],
++	bundle: true,
++	write: false,
++	format: "esm",
++	platform: "browser",
++	target: "es2022",
++});
++const ui = await build({
++	absWorkingDir: webRoot,
++	entryPoints: ["scripts/delivery-fixture.tsx"],
++	bundle: true,
++	write: false,
++	outfile: "delivery.js",
++	format: "esm",
++	platform: "browser",
++	jsx: "automatic",
++	define: { "process.env.NODE_ENV": '"development"' },
++});
++const runtime = new Miniflare({
++	modules: true,
++	script: bundle.outputFiles[0].text,
++	compatibilityDate: "2026-02-05",
++	d1Databases: ["DB"],
++	d1Persist: false,
++	host: "127.0.0.1",
++	port: 0,
++	bindings: {
++		ENVIRONMENT: "dev",
++		API_KEY_PEPPER: "synthetic-hopkit-test-pepper",
++		APP_BASE_URL: "http://127.0.0.1",
++	},
++	outboundService: () =>
++		new Response("External requests disabled", { status: 503 }),
++});
++let server: ReturnType<typeof Bun.serve> | undefined;
++let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
++try {
++	const db = await runtime.getD1Database("DB");
++	for (const file of (await readdir(`${apiRoot}/migrations`))
++		.filter((name) => name.endsWith(".sql"))
++		.sort()) {
++		const sql = await readFile(`${apiRoot}/migrations/${file}`, "utf8");
++		await db.batch(
++			sql
++				.split(";")
++				.map((s) => s.trim())
++				.filter(Boolean)
++				.map((s) => db.prepare(s)),
++		);
++	}
++	const backend = String(await runtime.ready).replace(/\/$/, "");
++	async function api(
++		method: string,
++		path: string,
++		body?: unknown,
++		key?: string,
++	) {
++		const response = await fetch(`${backend}${path}`, {
++			method,
++			headers: {
++				"content-type": "application/json",
++				"idempotency-key": crypto.randomUUID(),
++				...(key ? { authorization: `Bearer ${key}` } : {}),
++			},
++			body: body === undefined ? undefined : JSON.stringify(body),
++		});
++		const result = await response.json();
++		assert.equal(result.success, true, JSON.stringify(result));
++		return result.data;
++	}
++	async function person(email: string, workspace_name: string) {
++		const registered = await api("POST", "/v1/auth/register", {
++			email,
++			workspace_name,
++		});
++		const claimed = await api("POST", "/v1/auth/verify-email", {
++			verification_token: registered.verification_token,
++		});
++		return {
++			key: claimed.api_key,
++			id: claimed.user.id,
++			workspace: registered.workspace.id,
++		};
++	}
++	const owner = await person("owner@example.test", "HipHop fixture");
++	const member = await person("developer@example.test", "Personal fixture");
++	await api(
++		"POST",
++		`/v1/workspaces/${owner.workspace}/members`,
++		{ email: "developer@example.test", role: "MEMBER" },
++		owner.key,
++	);
++	const timeRoot = `/v1/workspaces/${owner.workspace}/time`;
++	await api(
++		"PUT",
++		`${timeRoot}/settings`,
++		{
++			version: 0,
++			timezone: "Europe/Amsterdam",
++			week_start: 1,
++			confirmed: true,
++		},
++		owner.key,
++	);
++	const pairs = [];
++	for (const name of ["Grow", "Veloura", "WF"]) {
++		const project = await api(
++			"POST",
++			`/v1/workspaces/${owner.workspace}/projects`,
++			{ name },
++			owner.key,
++		);
++		const task = await api(
++			"POST",
++			`/v1/workspaces/${owner.workspace}/tasks`,
++			{
++				title: `${name} device acceptance`,
++				priority: name === "Grow" ? "P0" : name === "Veloura" ? "P1" : "P2",
++				project_id: project.id,
++				assignee_user_id: interactive && name === "WF" ? owner.id : member.id,
++			},
++			owner.key,
++		);
++		await api(
++			"PUT",
++			`/v1/tasks/${task.id}/delivery`,
++			{
++				version: 1,
++				reason: "Synthetic pilot setup",
++				stage: "READY",
++				reviewer_user_id: owner.id,
++				details: {
++					area: "App",
++					repository: "https://example.test/repository",
++					outcome: "Complete the selected flow",
++					scope: "One bounded change",
++					base_ref: "fixture-base",
++					environment: "local",
++					next_action: "Run the device acceptance check",
++					contract_refs: ["docs/contract.md"],
++					acceptance_checks: ["Flow completes"],
++					setup_ready: true,
++					integration_mode: "fixture",
++					exclusions: ["Live services"],
++				},
++			},
++			owner.key,
++		);
++		pairs.push({ project, task });
++	}
++	if (interactive) {
++		const sample = await api(
++			"GET",
++			`/v1/tasks/${pairs[0].task.id}/delivery`,
++			undefined,
++			owner.key,
++		);
++		async function demoTask(
++			title: string,
++			projectId: string,
++			assignee = member.id,
++		) {
++			const task = await api(
++				"POST",
++				`/v1/workspaces/${owner.workspace}/tasks`,
++				{
++					title,
++					project_id: projectId,
++					assignee_user_id: assignee,
++					priority: "P1",
++				},
++				owner.key,
++			);
++			return api(
++				"PUT",
++				`/v1/tasks/${task.id}/delivery`,
++				{
++					version: task.version,
++					reason: "Local demo fixture",
++					stage: "READY",
++					reviewer_user_id: owner.id,
++					details: {
++						...sample.details,
++						outcome: title,
++						next_action: "Try the local pilot flow",
++					},
++				},
++				owner.key,
++			);
++		}
++		async function move(
++			task: { id: string; version: number },
++			stage: string,
++			extra: Record<string, unknown> = {},
++		) {
++			return api(
++				"PUT",
++				`/v1/tasks/${task.id}/delivery`,
++				{
++					version: task.version,
++					reason: "Local demo fixture",
++					stage,
++					...extra,
++				},
++				owner.key,
++			);
++		}
++		let review = await demoTask(
++			"Veloura: review onboarding layout",
++			pairs[1].project.id,
++		);
++		review = await move(review, "ACTIVE");
++		await move(review, "REVIEW", {
++			details: {
++				source_complete: true,
++				evidence: ["docs/demo-onboarding-check.md"],
++				build_ref: "demo-build",
++			},
++		});
++		const prerequisite = await demoTask(
++			"Grow: confirm progress API contract",
++			pairs[0].project.id,
++			owner.id,
++		);
++		const blocked = await demoTask(
++			"Grow: sync offline progress",
++			pairs[0].project.id,
++		);
++		await move(blocked, "BLOCKED", {
++			depends_on: [prerequisite.id],
++			blocker: {
++				owner_user_id: owner.id,
++				reason: "Waiting for the progress API contract",
++				next_action:
++					"Owner confirms the response fields; then resume app integration",
++			},
++		});
++		const active = await demoTask(
++			"Grow: connect the lesson progress screen",
++			pairs[0].project.id,
++		);
++		await move(active, "ACTIVE");
++		let week = await api(
++			"POST",
++			`${timeRoot}/weeks`,
++			{ week_start_date: demoWeek },
++			member.key,
++		);
++		for (const [index, pair] of pairs.slice(0, 2).entries()) {
++			week = await api(
++				"POST",
++				`${timeRoot}/weeks/${week.id}/actions`,
++				{
++					action: "save_entry",
++					version: week.version,
++					entry: {
++						project_id: pair.project.id,
++						task_id: pair.task.id,
++						work_date: demoWeek,
++						activity: "qa",
++						minutes: index ? 120 : 90,
++						note: `${pair.project.name} fictional device QA`,
++					},
++				},
++				member.key,
++			);
++		}
++		const queue = await api(
++			"GET",
++			`/v1/workspaces/${owner.workspace}/delivery/queue`,
++			undefined,
++			member.key,
++		);
++		assert.equal(queue.active.length, 1);
++		assert.equal(queue.ready_alternatives.length, 2);
++		assert.equal(queue.blocked.length, 1);
++		assert.equal(queue.review.length, 1);
++		assert.equal(queue.blocked[0].depends_on[0].satisfied, false);
++	}
++	server = Bun.serve({
++		hostname: "127.0.0.1",
++		port: 0,
++		async fetch(request) {
++			const url = new URL(request.url);
++			if (url.hostname !== "127.0.0.1")
++				return new Response("Loopback only", { status: 403 });
++			if (url.pathname === "/__delivery_demo") {
++				if (!interactive || request.method !== "GET")
++					return new Response("Not found", { status: 404 });
++				if (request.headers.get("sec-fetch-site") !== "same-origin")
++					return new Response("Same-origin demo only", { status: 403 });
++				return Response.json(
++					{
++						workspace: owner.workspace,
++						week: demoWeek,
++						contributor: member.key,
++						owner: owner.key,
++					},
++					{ headers: { "cache-control": "no-store" } },
++				);
++			}
++			if (url.pathname === "/api/delivery/request")
++				return forwardDelivery(request, {
++					BETTER_AUTH_URL: url.origin,
++					TODOLESS_API_ORIGIN: backend,
++				});
++			const file = ui.outputFiles.find((f) => f.path.endsWith(url.pathname));
++			if (url.pathname === "/delivery.js" || url.pathname === "/delivery.css")
++				return new Response(file!.text, {
++					headers: {
++						"content-type": url.pathname.endsWith(".css")
++							? "text/css"
++							: "text/javascript",
++					},
++				});
++			return new Response(
++				'<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>HopKit delivery fixture</title><link rel="stylesheet" href="/delivery.css"></head><body><div id="root"></div><script type="module" src="/delivery.js"></script></body></html>',
++				{ headers: { "content-type": "text/html" } },
++			);
++		},
++	});
++	if (verifyUpdates) {
++		// Real client/proxy/API/D1 checks without browser automation or real identities.
++		let loseResponse = false;
++		const commands: string[] = [];
++		const clientFor = (key: string) =>
++			new DeliveryClient(key, async (_url, init) => {
++				const response = await fetch(
++					`${server!.url.origin}/api/delivery/request`,
++					{
++						...init,
++						headers: {
++							...Object.fromEntries(new Headers(init!.headers)),
++							origin: server!.url.origin,
++						},
++					},
++				);
++				if (JSON.parse(String(init!.body)).method === "PUT") {
++					commands.push(String(init!.body));
++					if (loseResponse) {
++						loseResponse = false;
++						assert.equal(response.status, 200);
++						throw new Error("Synthetic lost progress response");
++					}
++				}
++				return response;
++			});
++		const contributor = clientFor(member.key),
++			reviewer = clientFor(owner.key);
++		const path = `/v1/tasks/${pairs[0].task.id}/delivery`;
++		const historyPath = `/v1/tasks/${pairs[0].task.id}/history`;
++		let card = await contributor.get<DeliveryCard>(path);
++		card = await contributor.mutate("PUT", path, {
++			version: card.version,
++			stage: "ACTIVE",
++			reason: "Start local acceptance preparation",
++		});
++		const data = new FormData();
++		for (const [name, value] of Object.entries({
++			progress: "Mapped account-switch state",
++			next: "Reproduce unresolved pending claim locally",
++			evidence: "docs/switch.md",
++			build: "build59",
++		}))
++			data.set(name, value);
++		const before = card.version;
++		loseResponse = true;
++		await assert.rejects(
++			contributor.mutate("PUT", path, progressCommand(card, data)),
++			/lost progress response/,
++		);
++		assert.equal(contributor.needsRetry, true);
++		await assert.rejects(contributor.mutate("PUT", path, {}), /Retry/);
++		card = await contributor.retry<DeliveryCard>();
++		assert.equal(commands.at(-1), commands.at(-2));
++		assert.equal(card.version, before + 1);
++		assert.equal(card.stage, "ACTIVE");
++		assert.equal(
++			card.details.next_action,
++			"Reproduce unresolved pending claim locally",
++		);
++		assert.equal(card.details.source_complete, false);
++		const histories = () =>
++			contributor.all<TaskHistoryEntry>(historyPath, "history");
++		assert.equal(
++			taskUpdates(await histories()).filter(
++				(e) => e.reason === "Mapped account-switch state",
++			).length,
++			1,
++		);
++		const stale = card;
++		const writes = await Promise.allSettled([
++			contributor.mutate<DeliveryCard>(
++				"PUT",
++				path,
++				progressCommand(stale, data),
++			),
++			clientFor(member.key).mutate<DeliveryCard>(
++				"PUT",
++				path,
++				progressCommand(stale, data),
++			),
++		]);
++		assert.equal(writes.filter((r) => r.status === "fulfilled").length, 1);
++		const rejected = writes.find((r) => r.status === "rejected");
++		assert.ok(
++			rejected?.status === "rejected" &&
++				rejected.reason instanceof DeliveryError &&
++				rejected.reason.status === 409,
++		);
++		card = await contributor.get<DeliveryCard>(path);
++		assert.equal(card.version, stale.version + 1);
++		card = await contributor.mutate("PUT", path, {
++			version: card.version,
++			stage: "BLOCKED",
++			reason: "Need the build",
++			blocker: {
++				owner_user_id: owner.id,
++				reason: "Build unassigned",
++				next_action: "Assign build",
++			},
++		});
++		for (const [name, value] of Object.entries({
++			owner: member.id,
++			blocker_reason: "Need local switch reproduction",
++			blocker_next: "Developer isolates pending payload",
++		}))
++			data.set(name, value);
++		card = await contributor.mutate("PUT", path, progressCommand(card, data));
++		assert.equal(card.stage, "BLOCKED");
++		assert.equal(card.blocker?.owner_user_id, member.id);
++		assert.equal(card.blocker?.reason, "Need local switch reproduction");
++		assert.equal(
++			card.blocker?.next_action,
++			"Developer isolates pending payload",
++		);
++		for (const stage of ["READY", "ACTIVE", "REVIEW"] as const)
++			card = await contributor.mutate("PUT", path, {
++				version: card.version,
++				stage,
++				reason: "Local task flow",
++				...(stage === "REVIEW"
++					? { details: { source_complete: true, evidence: ["docs/switch.md"] } }
++					: {}),
++			});
++		await assert.rejects(
++			contributor.mutate("PUT", path, {
++				version: card.version,
++				reason: "Unauthorized review evidence",
++				details: { evidence: ["bad"] },
++			}),
++			(e) => e instanceof DeliveryError && e.status === 403,
++		);
++		await assert.rejects(
++			reviewer.mutate("PUT", path, {
++				version: card.version,
++				reason: "Scope still frozen",
++				details: { next_action: "Skip rework" },
++			}),
++			(e) => e instanceof DeliveryError && e.status === 409,
++		);
++		card = await reviewer.mutate("PUT", path, {
++			version: card.version,
++			stage: "ACTIVE",
++			reason: "Add unresolved-account-switch evidence before approval",
++		});
++		data.set("progress", "Working on reviewer feedback");
++		card = await contributor.mutate("PUT", path, progressCommand(card, data));
++		const history = await histories();
++		const returned = taskUpdates(history).find((e) => e.returned);
++		assert.equal(
++			returned?.reason,
++			"Add unresolved-account-switch evidence before approval",
++		);
++		assert.equal(returned?.actor?.user_id, owner.id);
++		assert.equal(
++			taskUpdates(history)[0].reason,
++			"Working on reviewer feedback",
++		);
++		// A real outsider cannot read feedback. A viewer may read, never write progress.
++		const observer = await person("observer@example.test", "Observer fixture");
++		const observerClient = clientFor(observer.key);
++		await assert.rejects(
++			observerClient.get(historyPath),
++			(e) => e instanceof DeliveryError && e.status === 404,
++		);
++		await api(
++			"POST",
++			`/v1/workspaces/${owner.workspace}/members`,
++			{ email: "observer@example.test", role: "VIEWER" },
++			owner.key,
++		);
++		await observerClient.get(historyPath);
++		await assert.rejects(
++			observerClient.mutate("PUT", path, progressCommand(card, data)),
++			(e) => e instanceof DeliveryError && e.status === 403,
++		);
++		await api(
++			"DELETE",
++			`/v1/workspaces/${owner.workspace}/members/${observer.id}`,
++			undefined,
++			owner.key,
++		);
++		await assert.rejects(
++			observerClient.get(historyPath),
++			(e) => e instanceof DeliveryError && e.status === 404,
++		);
++		console.log(
++			"PASS: progress/blocker updates, exact retry, concurrent conflict, review freeze, persistent return reason and outsider/viewer/revoked-member authorization on real disposable D1.",
++		);
++	} else if (interactive) {
++		console.log(`HopKit demo ready: ${server.url.href}demo`);
++		console.log(
++			`Synthetic data only. Week ${demoWeek}, Monday / Europe/Amsterdam. Stop with Ctrl+C; data resets on restart.`,
++		);
++		await new Promise<void>((resolve) => {
++			process.once("SIGINT", resolve);
++			process.once("SIGTERM", resolve);
++		});
++	} else {
++		browser = await chromium!.launch({ channel: "chrome", headless: true });
++		const context = await browser.newContext({
++			viewport: { width: 1280, height: 1000 },
++			acceptDownloads: true,
++		});
++		await context.route(
++			"**/*",
++			(route: {
++				request(): { url(): string };
++				continue(): Promise<void>;
++				abort(): Promise<void>;
++			}) =>
++				new URL(route.request().url()).hostname === "127.0.0.1"
++					? route.continue()
++					: route.abort(),
++		);
++		const page = await context.newPage();
++		const errors: string[] = [];
++		let loseFirstSave = true;
++		let lostCommand: string | null = null;
++		let replayedCommand: string | null = null;
++		await page.route(
++			"**/api/delivery/request",
++			async (route: {
++				request(): { postData(): string };
++				fetch(): Promise<unknown>;
++				abort(): Promise<void>;
++				continue(): Promise<void>;
++			}) => {
++				const body = route.request().postData();
++				const command = JSON.parse(body);
++				if (command.body?.action === "save_entry") {
++					if (loseFirstSave) {
++						loseFirstSave = false;
++						lostCommand = body;
++						await route.fetch();
++						await route.abort();
++						return;
++					}
++					if (replayedCommand === null) replayedCommand = body;
++				}
++				await route.continue();
++			},
++		);
++		page.on("pageerror", (error: Error) => errors.push(error.message));
++		await page.goto(server.url.href);
++		async function connect(key: string) {
++			if (
++				await page
++					.getByRole("button", { name: "Disconnect & clear key" })
++					.count()
++			)
++				await page
++					.getByRole("button", { name: "Disconnect & clear key" })
++					.click();
++			await page.getByLabel("Personal Todoless key").fill(key);
++			await page
++				.getByRole("button", { name: "Connect Todoless", exact: true })
++				.click();
++			try {
++				await page
++					.getByLabel("Workspace", { exact: true })
++					.selectOption(owner.workspace, { timeout: 5000 });
++			} catch (error) {
++				console.error("Connect UI:", await page.locator("main").innerText());
++				throw error;
++			}
++			await page
++				.getByRole("heading", { name: "One thing in motion." })
++				.waitFor();
++		}
++		async function viewHours(team = false) {
++			await page
++				.getByRole("button", {
++					name: team ? "Weekly approval" : "My hours",
++					exact: true,
++				})
++				.click();
++			await page.getByLabel("Week starting").fill("2026-10-19");
++		}
++		const output = fileURLToPath(
++			new URL("../../../.tmp/delivery-ui/", import.meta.url),
++		);
++		await mkdir(output, { recursive: true });
++		await connect(member.key);
++		await page.getByText("Two alternatives are ready.").waitFor();
++		await page.screenshot({
++			path: `${output}/queue-desktop.png`,
++			fullPage: true,
++		});
++		const grow = page.locator("article.delivery-task").filter({
++			has: page.getByRole("heading", {
++				name: "Grow device acceptance",
++				exact: true,
++			}),
++		});
++		await grow.getByRole("button", { name: "Update status" }).click();
++		await grow.getByLabel("Move to").selectOption("ACTIVE");
++		await grow
++			.getByLabel("Reason", { exact: true })
++			.fill("Starting the fixture task");
++
++		await api(
++			"PUT",
++			`/v1/tasks/${pairs[0].task.id}/delivery`,
++			{
++				version: 2,
++				reason: "Concurrent next-action correction",
++				details: { next_action: "Run the corrected fixture check" },
++			},
++			owner.key,
++		);
++		await grow.getByRole("button", { name: "Save status" }).click();
++		await page
++			.getByRole("alert")
++			.filter({
++				hasText: "Refresh current records before making another change.",
++			})
++			.waitFor();
++		assert.equal(
++			await grow.getByRole("button", { name: "Save status" }).isDisabled(),
++			true,
++		);
++		await page.getByRole("button", { name: "Refresh current records" }).click();
++		await grow.getByRole("button", { name: "Update status" }).click();
++		await grow.getByLabel("Move to").selectOption("ACTIVE");
++		await grow
++			.getByLabel("Reason", { exact: true })
++			.fill("Starting after reloading the correction");
++		await grow.getByRole("button", { name: "Save status" }).click();
++		await page.getByText("Saved in Todoless.").waitFor();
++		assert.equal(
++			(
++				await api(
++					"GET",
++					`/v1/workspaces/${owner.workspace}/delivery/queue`,
++					undefined,
++					member.key,
++				)
++			).active.length,
++			1,
++		);
++		await grow.getByRole("button", { name: "Update status" }).click();
++		await grow.getByLabel("Move to").selectOption("REVIEW");
++		await grow
++			.getByLabel("Reason", { exact: true })
++			.fill("Source ready for review");
++		await grow
++			.getByLabel("Evidence references (one per line)")
++			.fill("docs/device-qa.md");
++		await grow.getByLabel("Source is complete and ready for review").check();
++		await grow.getByRole("button", { name: "Save status" }).click();
++		await page
++			.getByText("Source ready for review", { exact: true })
++			.waitFor({ state: "hidden" });
++		await viewHours();
++		await page.getByRole("button", { name: "Start this week" }).click();
++		for (const [index, pair] of pairs.slice(0, 2).entries()) {
++			await page.getByRole("button", { name: "Log time", exact: true }).click();
++			await page
++				.getByLabel("Project", { exact: true })
++				.selectOption(pair.project.id);
++			await page.getByLabel("Task", { exact: true }).selectOption(pair.task.id);
++			await page
++				.getByLabel("Minutes", { exact: true })
++				.fill(index ? "120" : "90");
++			await page
++				.getByLabel("What did you work on?")
++				.fill(index ? "Veloura device QA" : "Grow device QA");
++			await page
++				.getByRole("button", { name: "Save time", exact: true })
++				.click();
++			if (index === 0) {
++				await page.getByRole("button", { name: "Retry exact action" }).click();
++				assert.equal(replayedCommand, lostCommand);
++			}
++			await page
++				.getByText(index ? "Veloura device QA" : "Grow device QA", {
++					exact: false,
++				})
++				.first()
++				.waitFor();
++		}
++		assert.equal(
++			await page.getByLabel("Week starting").inputValue(),
++			"2026-10-19",
++		);
++		await page
++			.getByLabel("I confirm these entries are actual human time worked.")
++			.check();
++		await page
++			.getByRole("button", { name: "Submit week for approval" })
++			.click();
++		await page
++			.getByText("Submitted for another person to review.", { exact: false })
++			.waitFor();
++		assert.equal(
++			await page
++				.getByRole("button", { name: "Approve week", exact: true })
++				.count(),
++			0,
++		);
++		await connect(owner.key);
++		await page.getByLabel("Queue for", { exact: true }).selectOption(member.id);
++		await grow.getByRole("button", { name: "Update status" }).click();
++		await grow.getByLabel("Move to").selectOption("VERIFY");
++		await grow.getByLabel("Reason", { exact: true }).fill("Review passed");
++		await grow.getByRole("button", { name: "Save status" }).click();
++		await grow.getByRole("button", { name: "Update status" }).click();
++		await grow.getByLabel("Move to").selectOption("DONE");
++		await grow
++			.getByLabel("Reason", { exact: true })
++			.fill("Device check passed locally");
++		await grow.getByLabel("Acceptance checks passed").check();
++		await grow.getByRole("button", { name: "Save status" }).click();
++		await grow.waitFor({ state: "hidden" });
++		const completed = await api(
++			"GET",
++			`/v1/tasks/${pairs[0].task.id}/delivery`,
++			undefined,
++			owner.key,
++		);
++		assert.equal(completed.stage, "DONE");
++		assert.equal(completed.details.deployed, false);
++		assert.equal(completed.details.device_accepted, false);
++		await viewHours(true);
++		await page
++			.getByLabel("Reason (required", { exact: false })
++			.fill("Clarify the Grow half hour");
++		await page.getByRole("button", { name: "Return with reason" }).click();
++		await page
++			.getByRole("button", { name: "Show audit trail & return reasons" })
++			.click();
++		await page
++			.getByText("Clarify the Grow half hour", { exact: true })
++			.waitFor();
++		await connect(member.key);
++		await viewHours();
++		await page
++			.getByLabel("Reason (required", { exact: false })
++			.fill("Clarified device QA");
++		await page.getByRole("button", { name: "Create revision" }).click();
++		await page
++			.getByLabel("I confirm these entries are actual human time worked.")
++			.check();
++		await page
++			.getByRole("button", { name: "Submit week for approval" })
++			.click();
++		await page
++			.getByText("Submitted for another person to review.", { exact: false })
++			.waitFor();
++		await connect(owner.key);
++		await viewHours(true);
++		await page
++			.getByLabel("Approved minutes: Grow device QA", { exact: true })
++			.fill("60");
++		await page
++			.getByLabel("Reason (required", { exact: false })
++			.fill("Thirty minutes duplicated");
++		await page
++			.getByLabel("I have reviewed every entry and the approved minutes.")
++			.check();
++		await page
++			.getByRole("button", { name: "Approve week", exact: true })
++			.click();
++		await page
++			.getByText("Approval reason: Thirty minutes duplicated")
++			.waitFor();
++		const weeks = (
++			await api(
++				"GET",
++				`${timeRoot}/weeks?from=2026-10-19&to=2026-10-19&user_id=all`,
++				undefined,
++				owner.key,
++			)
++		).weeks;
++		assert.equal(weeks.length, 1);
++		assert.equal(weeks[0].entries.length, 2);
++		assert.equal(
++			weeks[0].entries.reduce(
++				(n: number, e: { minutes: number }) => n + e.minutes,
++				0,
++			),
++			210,
++		);
++		assert.equal(
++			weeks[0].approval.entries.reduce(
++				(n: number, e: { approved_minutes: number }) => n + e.approved_minutes,
++				0,
++			),
++			180,
++		);
++		assert.equal(weeks[0].revision, 2);
++		assert.equal(weeks[0].payment_status, "manual_unrecorded");
++		const download = page.waitForEvent("download");
++		await page.getByRole("button", { name: "Export this week as CSV" }).click();
++		const csv = await download;
++		await csv.saveAs(`${output}/hours.csv`);
++		assert.match(
++			await readFile(`${output}/hours.csv`, "utf8"),
++			/submitted_minutes/,
++		);
++		await page.screenshot({
++			path: `${output}/approval-desktop.png`,
++			fullPage: true,
++		});
++		await page.setViewportSize({ width: 390, height: 844 });
++		await page.evaluate(
++			() => (document.documentElement.dataset.theme = "dark"),
++		);
++		assert.equal(
++			await page.evaluate(
++				() => document.documentElement.scrollWidth > window.innerWidth,
++			),
++			false,
++		);
++		await page.screenshot({
++			path: `${output}/approval-mobile-dark.png`,
++			fullPage: true,
++		});
++		const stored = await page.evaluate(() =>
++			JSON.stringify({ ...localStorage, ...sessionStorage }),
++		);
++		assert.equal(
++			stored.includes(member.key) || stored.includes(owner.key),
++			false,
++		);
++		await page.getByRole("button", { name: "Disconnect & clear key" }).click();
++		await page.reload();
++		await page.getByRole("heading", { name: "Connect your work." }).waitFor();
++		assert.deepEqual(errors, []);
++		console.log(
++			"PASS: actual task start/review/verify/done; stale-version reload; Grow + Veloura human entries; submission; no self-approval UI; lost-response exact retry without duplicate time; return/revise; adjusted approval; CSV; desktop/mobile; no persistent keys. Synthetic local data only.",
++		);
++	}
++} finally {
++	await browser?.close();
++	server?.stop(true);
++	await runtime.dispose();
++}
+diff --git a/apps/web/src/react-app/App.tsx b/apps/web/src/react-app/App.tsx
+--- a/apps/web/src/react-app/App.tsx
++++ b/apps/web/src/react-app/App.tsx
+@@ -1,4 +1,4 @@
+-import { useState } from "react";
++import { lazy, Suspense, useState } from "react";
+ import { LandingPage } from "./LandingPage";
+ import { InvitationPage } from "./InvitationPage";
+ import { ThemeSwitch } from "./ThemeSwitch";
+@@ -16,6 +16,8 @@
+ import "./Dashboard.css";
+ import "./ConceptMedia.css";
+ 
++const DeliveryPage = lazy(() => import("./DeliveryPage").then((module) => ({ default: module.DeliveryPage })));
++
+ function GoogleIcon() {
+ 	return (
+ 		<svg viewBox="0 0 24 24" aria-hidden="true" className="google-icon">
+@@ -69,7 +71,7 @@
+ 		try {
+ 			const result = await authClient.signIn.social({
+ 				provider: "google",
+-				callbackURL: `${window.location.origin}${/^\/connectors\/actions\/[A-Za-z0-9_-]+$/.test(window.location.pathname) ? window.location.pathname : window.location.pathname.startsWith("/connectors") ? "/connectors" : "/"}`,
++				callbackURL: `${window.location.origin}${/^\/connectors\/actions\/[A-Za-z0-9_-]+$/.test(window.location.pathname) ? window.location.pathname : window.location.pathname.startsWith("/connectors") ? "/connectors" : /^\/delivery\/?$/.test(window.location.pathname) ? "/delivery" : "/"}`,
+ 			});
+ 
+ 			if (result.error) {
+@@ -210,6 +212,8 @@
+ 		return <SignedOutScreen sessionError={Boolean(error)} landing={window.location.pathname === "/"} />;
+ 	}
+ 
++	if (/^\/delivery\/?$/.test(window.location.pathname))
++		return <Suspense fallback={<LoadingScreen />}><DeliveryPage key={session.session.id} email={session.user.email} /></Suspense>;
+ 	if (window.location.pathname.startsWith("/connectors/actions/"))
+ 		return <AssistantActionPage />;
+ 	if (window.location.pathname.startsWith("/connectors"))
+diff --git a/apps/web/src/react-app/DeliveryPage.css b/apps/web/src/react-app/DeliveryPage.css
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/DeliveryPage.css
+@@ -0,0 +1,441 @@
++.delivery-page {
++	max-width: 1240px;
++	margin: auto;
++	padding: 28px 40px 48px;
++	color: var(--ink);
++}
++.delivery-page button,
++.delivery-page input,
++.delivery-page select,
++.delivery-page textarea {
++	font: inherit;
++}
++.delivery-page button {
++	cursor: pointer;
++}
++.delivery-page button:disabled {
++	cursor: not-allowed;
++	opacity: 0.55;
++}
++.delivery-page a {
++	color: var(--moss);
++	overflow-wrap: anywhere;
++}
++.delivery-page input:not([type="checkbox"]),
++.delivery-page select,
++.delivery-page textarea {
++	display: block;
++	width: 100%;
++	min-width: 0;
++	border: 1px solid var(--control-line);
++	border-radius: 3px;
++	background: var(--paper-white);
++	color: var(--ink);
++	padding: 10px 12px;
++	margin-top: 6px;
++}
++.delivery-page textarea {
++	min-height: 85px;
++	resize: vertical;
++}
++.delivery-page label {
++	display: block;
++	font-size: 0.85rem;
++	font-weight: 650;
++}
++.delivery-page :focus-visible {
++	outline: 3px solid var(--moss);
++	outline-offset: 3px;
++}
++.delivery-header,
++.delivery-section-heading,
++.delivery-connection {
++	display: flex;
++	align-items: center;
++	justify-content: space-between;
++	gap: 24px;
++}
++.delivery-header {
++	padding-bottom: 24px;
++	border-bottom: 1px solid var(--line);
++}
++.delivery-brand {
++	font-size: 1.5rem;
++	font-weight: 800;
++	letter-spacing: -0.07em;
++	text-decoration: none;
++	color: var(--ink) !important;
++}
++.delivery-brand span {
++	display: block;
++	font-size: 0.65rem;
++	letter-spacing: 0.08em;
++	font-weight: 600;
++	color: var(--ink-muted);
++}
++.delivery-intro {
++	padding: 54px 0 38px;
++	max-width: 620px;
++}
++.delivery-intro .eyebrow {
++	color: var(--moss);
++}
++.delivery-intro h1 {
++	font-size: clamp(2.7rem, 6vw, 4.8rem);
++	letter-spacing: -0.065em;
++	line-height: 1.02;
++	margin: 18px 0;
++	font-weight: 650;
++}
++.delivery-intro > p:last-child {
++	font-size: 1.1rem;
++	color: var(--ink-muted);
++}
++.delivery-connect {
++	display: grid;
++	grid-template-columns: 1fr 1fr;
++	gap: 64px;
++	border-top: 2px solid var(--moss);
++	padding: 32px 0;
++}
++.delivery-page h2 {
++	font-size: 1.8rem;
++	font-weight: 650;
++	letter-spacing: -0.035em;
++	margin: 8px 0 16px;
++}
++.delivery-page h3 {
++	margin: 0 0 12px;
++}
++.delivery-form {
++	display: grid;
++	gap: 16px;
++}
++.delivery-form h3 {
++	margin: 0;
++}
++.delivery-connection {
++	border-block: 1px solid var(--line);
++	padding: 20px 0;
++	flex-wrap: wrap;
++}
++.delivery-connection strong {
++	display: block;
++	overflow-wrap: anywhere;
++}
++.delivery-connection label {
++	min-width: 220px;
++}
++.delivery-actions {
++	display: flex;
++	flex-wrap: wrap;
++	align-items: center;
++	gap: 14px;
++}
++.delivery-tabs {
++	display: flex;
++	flex-wrap: wrap;
++	gap: 28px;
++	margin: 16px auto 22px 0;
++}
++.delivery-tabs button {
++	color: var(--ink-muted);
++	background: transparent;
++	border: 0;
++	border-bottom: 3px solid transparent;
++	padding: 12px 0;
++	font-weight: 650;
++}
++.delivery-tabs button[aria-current] {
++	color: var(--moss);
++	border-color: var(--moss);
++}
++.delivery-content {
++	border: 0;
++	padding: 0;
++	margin: 0;
++	min-width: 0;
++}
++.delivery-section-heading {
++	margin: 22px 0;
++	align-items: end;
++}
++.delivery-section-heading label {
++	min-width: 200px;
++}
++.delivery-muted {
++	color: var(--ink-muted);
++	font-size: 0.85rem;
++}
++.delivery-notice {
++	color: var(--warning);
++	background: var(--warning-wash);
++	border-inline-start: 3px solid var(--warning-line);
++	padding: 14px 18px;
++}
++.delivery-queue-grid {
++	display: grid;
++	grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
++	gap: 32px;
++}
++.delivery-lane {
++	min-width: 0;
++}
++.delivery-lane > h3 {
++	display: flex;
++	justify-content: space-between;
++	padding-bottom: 10px;
++	border-bottom: 1px solid var(--line);
++	font-size: 0.95rem;
++}
++.delivery-lane > h3 span {
++	color: var(--ink-muted);
++	font-weight: 400;
++}
++.delivery-task {
++	padding: 22px;
++	background: var(--paper-white);
++	border: 1px solid var(--line);
++	margin-top: 12px;
++	overflow-wrap: anywhere;
++}
++.delivery-lane:first-child .delivery-task {
++	border-top: 3px solid var(--moss);
++}
++.delivery-task__meta {
++	display: flex;
++	justify-content: space-between;
++	gap: 12px;
++	color: var(--ink-muted);
++	font-size: 0.75rem;
++	margin-bottom: 14px;
++}
++.delivery-task h3 {
++	font-size: 1.2rem;
++	letter-spacing: -0.02em;
++}
++.delivery-task p,
++.delivery-task li {
++	font-size: 0.9rem;
++}
++.delivery-task details {
++	margin: 16px 0;
++}
++.delivery-task summary {
++	font-size: 0.85rem;
++	cursor: pointer;
++	color: var(--moss);
++}
++.delivery-issues {
++	color: var(--warning);
++}
++.delivery-empty {
++	padding: 24px 16px;
++	color: var(--ink-muted);
++	border: 1px dashed var(--line);
++	font-size: 0.9rem;
++}
++.delivery-week {
++	border-top: 2px solid var(--moss);
++	padding-top: 12px;
++	margin-top: 24px;
++}
++.delivery-week p {
++	overflow-wrap: anywhere;
++}
++.delivery-totals {
++	display: grid;
++	grid-template-columns: auto auto;
++	gap: 2px 14px;
++	align-items: baseline;
++	font-variant-numeric: tabular-nums;
++}
++.delivery-totals strong {
++	font-size: 1.3rem;
++}
++.delivery-totals span {
++	color: var(--ink-muted);
++	font-size: 0.8rem;
++}
++.delivery-table-wrap {
++	overflow-x: auto;
++}
++.delivery-page table {
++	width: 100%;
++	border-collapse: collapse;
++	text-align: left;
++	font-size: 0.85rem;
++}
++.delivery-page caption {
++	text-align: left;
++	padding: 16px 0;
++	font-weight: 650;
++}
++.delivery-page th {
++	color: var(--ink-muted);
++	font-size: 0.75rem;
++	font-weight: 650;
++}
++.delivery-page td,
++.delivery-page th {
++	padding: 14px 12px;
++	border-bottom: 1px solid var(--line);
++	vertical-align: top;
++	min-width: 105px;
++}
++.delivery-page td:first-child,
++.delivery-page th:first-child {
++	padding-left: 0;
++}
++.delivery-page td:nth-child(2) {
++	min-width: 200px;
++	max-width: 400px;
++	overflow-wrap: anywhere;
++}
++.delivery-page td code {
++	font-size: 0.7rem;
++	overflow-wrap: anywhere;
++}
++.delivery-page td label {
++	max-width: 200px;
++}
++.delivery-project-totals {
++	padding: 14px 0;
++	list-style: none;
++	display: flex;
++	flex-wrap: wrap;
++	gap: 18px;
++	font-size: 0.85rem;
++}
++.delivery-reason {
++	max-width: 680px;
++	margin: 24px 0;
++}
++.delivery-entry-form {
++	background: var(--paper-white);
++	padding: 24px;
++	border: 1px solid var(--line);
++	margin: 20px 0;
++}
++.delivery-fields {
++	display: grid;
++	grid-template-columns: repeat(2, minmax(0, 1fr));
++	gap: 18px;
++}
++.delivery-page .delivery-check {
++	display: flex;
++	align-items: start;
++	gap: 10px;
++	font-weight: 500;
++	margin: 18px 0;
++}
++.delivery-check input {
++	margin-top: 4px;
++}
++.delivery-history {
++	margin-top: 28px;
++	border-top: 1px solid var(--line);
++	padding-top: 18px;
++}
++.delivery-history li {
++	padding: 8px 0;
++	font-size: 0.85rem;
++}
++.delivery-footer {
++	margin-top: 64px;
++	padding-top: 18px;
++	border-top: 1px solid var(--line);
++	color: var(--ink-muted);
++	font-size: 0.75rem;
++}
++@media (max-width: 720px) {
++	.delivery-page {
++		padding: 20px;
++	}
++	.delivery-header {
++		align-items: start;
++	}
++	.delivery-header > .delivery-actions {
++		justify-content: end;
++		max-width: 185px;
++	}
++	.delivery-intro {
++		padding: 36px 0 24px;
++	}
++	.delivery-connect,
++	.delivery-queue-grid,
++	.delivery-fields {
++		grid-template-columns: 1fr;
++		gap: 24px;
++	}
++	.delivery-section-heading {
++		flex-direction: column;
++		align-items: stretch;
++		gap: 8px;
++	}
++	.delivery-tabs {
++		gap: 18px;
++	}
++	.delivery-task {
++		padding: 18px;
++	}
++	.delivery-entry-form {
++		padding: 16px;
++	}
++}
++
++.delivery-intro--connected {
++	padding: 24px 0 18px;
++}
++.delivery-intro--connected h1 {
++	font-size: 2.5rem;
++	margin: 8px 0;
++}
++.delivery-intro--connected > p:last-child {
++	font-size: 0.9rem;
++	margin: 8px 0;
++}
++@media (max-width: 720px) {
++	.delivery-table-wrap {
++		overflow: visible;
++	}
++	.delivery-page table,
++	.delivery-page tbody {
++		display: block;
++	}
++	.delivery-page thead {
++		position: absolute;
++		width: 1px;
++		height: 1px;
++		overflow: hidden;
++		clip-path: inset(50%);
++	}
++	.delivery-page tr {
++		display: grid;
++		grid-template-columns: 1fr 1fr;
++		border-top: 1px solid var(--line);
++		padding: 14px 0;
++	}
++	.delivery-page td {
++		display: block;
++		min-width: 0;
++		border: 0;
++		padding: 10px 0;
++	}
++	.delivery-page td:first-child,
++	.delivery-page td:nth-child(2),
++	.delivery-page td:nth-child(5) {
++		grid-column: 1 / -1;
++		min-width: 0;
++	}
++	.delivery-page td::before {
++		content: attr(data-label);
++		display: block;
++		color: var(--ink-muted);
++		font-size: 0.75rem;
++		margin-bottom: 5px;
++	}
++	.delivery-page caption {
++		display: block;
++	}
++}
+diff --git a/apps/web/src/react-app/DeliveryPage.tsx b/apps/web/src/react-app/DeliveryPage.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/DeliveryPage.tsx
+@@ -0,0 +1,407 @@
++import { useCallback, useEffect, useRef, useState } from "react";
++import { DeliveryClient, DeliveryError } from "./delivery-client";
++import { DeliveryQueue, type RunDelivery } from "./DeliveryQueue";
++import { DeliveryWeeks } from "./DeliveryWeeks";
++import { DeliveryPortfolio } from "./DeliveryPortfolio";
++import type { Person, Project, Settings, Workspace } from "./delivery-types";
++import { ThemeSwitch } from "./ThemeSwitch";
++import { useDeliveryResource } from "./use-delivery-resource";
++import "./DeliveryPage.css";
++
++type Connection = {
++	client: DeliveryClient;
++	user: { id: string; email: string };
++	scopes: string[];
++	workspaces: Workspace[];
++};
++function WorkspaceDelivery({
++	connection,
++	workspace,
++	onLock,
++	onWorkspace,
++}: {
++	connection: Connection;
++	workspace: Workspace;
++	onLock: (locked: boolean) => void;
++	onWorkspace: (id: string) => void;
++}) {
++	const { client, user, scopes } = connection;
++	const [tab, setTab] = useState("queue");
++	const [refresh, setRefresh] = useState(0);
++	const [busy, setBusy] = useState(false);
++	const locked = useRef(false);
++	const [error, setError] = useState("");
++	const [stale, setStale] = useState(false);
++	const [notice, setNotice] = useState("");
++	const load = useCallback(async () => {
++		const [projects, people, settings] = await Promise.all([
++			client.get<{ projects: Project[] }>(
++				`/v1/workspaces/${workspace.id}/projects`,
++			),
++			client.all<Person>(`/v1/workspaces/${workspace.id}/members`, "members"),
++			workspace.role === "VIEWER"
++				? Promise.resolve<Settings>({
++						settings: null,
++						access: {
++							user_id: user.id,
++							can_approve: false,
++							can_configure: false,
++						},
++					})
++				: client.get<Settings>(`/v1/workspaces/${workspace.id}/time/settings`),
++		]);
++		return { projects: projects.projects, people, settings };
++	}, [client, workspace.id, workspace.role, user.id]);
++	const result = useDeliveryResource(load, String(refresh), true);
++	const run: RunDelivery = async (action) => {
++		if (locked.current) return;
++		locked.current = true;
++		onLock(true);
++		setBusy(true);
++		setError("");
++		setNotice("");
++		try {
++			await action();
++			setRefresh((n) => n + 1);
++			setNotice("Saved in Todoless.");
++		} catch (e) {
++			setError(
++				e instanceof Error ? e.message : "The action could not be completed.",
++			);
++			if (e instanceof DeliveryError && [401, 403, 404, 409].includes(e.status))
++				setStale(true);
++		} finally {
++			locked.current = false;
++			onLock(client.needsRetry);
++			setBusy(false);
++		}
++	};
++	const canWrite =
++		workspace.role !== "VIEWER" &&
++		(scopes.includes("*") || scopes.includes("workspace:write"));
++	return (
++		<>
++			<div className="delivery-actions">
++				<nav className="delivery-tabs" aria-label="Delivery views">
++					<button
++						aria-current={tab === "queue" ? "page" : undefined}
++						disabled={busy || client.needsRetry}
++						onClick={() => setTab("queue")}
++					>
++						Task queue
++					</button>
++					<button
++						aria-current={tab === "hours" ? "page" : undefined}
++						disabled={busy || client.needsRetry}
++						onClick={() => setTab("hours")}
++					>
++						My hours
++					</button>
++					<button
++						aria-current={tab === "portfolio" ? "page" : undefined}
++						disabled={busy || client.needsRetry}
++						onClick={() => setTab("portfolio")}
++					>
++						Personal portfolio
++					</button>
++					{result.data?.settings.access.can_approve && (
++						<button
++							aria-current={tab === "approval" ? "page" : undefined}
++							disabled={busy || client.needsRetry}
++							onClick={() => setTab("approval")}
++						>
++							Weekly approval
++						</button>
++					)}
++				</nav>
++				<button
++					type="button"
++					className="text-button"
++					disabled={busy || client.needsRetry}
++					onClick={() => {
++						setStale(false);
++						setError("");
++						setNotice("");
++						setRefresh((n) => n + 1);
++					}}
++				>
++					Refresh current records
++				</button>
++			</div>
++			{error && (
++				<p className="delivery-notice" role="alert">
++					{error}
++					{stale
++						? " Refresh current records before making another change."
++						: ""}
++				</p>
++			)}
++			{client.needsRetry && !busy && (
++				<div className="delivery-notice">
++					<p>
++						The last action has an uncertain outcome. Retry it with the same
++						request before changing anything else. Keep this tab open.
++					</p>
++					<button
++						className="button button--primary"
++						type="button"
++						onClick={() => void run(() => client.retry())}
++					>
++						Retry exact action
++					</button>
++				</div>
++			)}
++			<p role="status" className="delivery-muted">
++				{busy ? "Saving..." : notice}
++			</p>
++			{result.error ? (
++				<p role="alert">{result.error}</p>
++			) : !result.data ? (
++				<p role="status">Loading workspace...</p>
++			) : (
++				<fieldset
++					className="delivery-content"
++					disabled={busy || stale || client.needsRetry || result.loading}
++				>
++					{!canWrite && tab !== "portfolio" && (
++						<p className="delivery-notice">
++							This connection has read-only access.
++						</p>
++					)}
++					{tab === "portfolio" ? (
++						<DeliveryPortfolio
++							{...{ client, refresh, run }}
++							canWrite={
++								scopes.includes("*") || scopes.includes("workspace:write")
++							}
++							openQueue={(id) => {
++								onWorkspace(id);
++								setTab("queue");
++							}}
++						/>
++					) : tab === "queue" ? (
++						<DeliveryQueue
++							{...result.data}
++							{...{ client, workspace, refresh, canWrite, run }}
++							userId={user.id}
++						/>
++					) : (
++						<DeliveryWeeks
++							key={tab}
++							{...result.data}
++							{...{ client, workspace, refresh, canWrite, run }}
++							userId={user.id}
++							team={
++								tab === "approval" && result.data.settings.access.can_approve
++							}
++						/>
++					)}
++				</fieldset>
++			)}
++		</>
++	);
++}
++export function DeliveryPage({ email }: { email: string }) {
++	const [connection, setConnection] = useState<Connection | null>(null);
++	const clientRef = useRef<DeliveryClient | null>(null);
++	const [workspaceId, setWorkspaceId] = useState("");
++	const [busy, setBusy] = useState(false);
++	const connecting = useRef(false);
++	const [error, setError] = useState("");
++	useEffect(() => {
++		const clear = () => {
++			clientRef.current?.disconnect();
++			setConnection(null);
++		};
++		const guard = (event: BeforeUnloadEvent) => {
++			if (clientRef.current?.needsRetry) {
++				event.preventDefault();
++				event.returnValue = "";
++			}
++		};
++		window.addEventListener("pagehide", clear);
++		window.addEventListener("beforeunload", guard);
++		return () => {
++			clientRef.current?.disconnect();
++			window.removeEventListener("pagehide", clear);
++			window.removeEventListener("beforeunload", guard);
++		};
++	}, []);
++	const workspace = connection?.workspaces.find((w) => w.id === workspaceId);
++	function disconnect() {
++		clientRef.current?.disconnect();
++		clientRef.current = null;
++		setConnection(null);
++		setWorkspaceId("");
++		setError("");
++	}
++	return (
++		<main className="delivery-page" lang="en" dir="ltr">
++			<header className="delivery-header">
++				<a className="delivery-brand" href="/">
++					HopKit<span>by HipHop</span>
++				</a>
++				<div className="delivery-actions">
++					<a className="text-button" href="/">
++						Planning home
++					</a>
++					<ThemeSwitch />
++				</div>
++			</header>
++			<div
++				className={
++					connection
++						? "delivery-intro delivery-intro--connected"
++						: "delivery-intro"
++				}
++			>
++				<p className="eyebrow">Team delivery / Pilot</p>
++				<h1>
++					{connection ? (
++						"Delivery."
++					) : (
++						<>
++							Make room
++							<br />
++							for the work.
++						</>
++					)}
++				</h1>
++				<p>A focused queue. Honest hours. A clear weekly review.</p>
++			</div>
++			{!connection ? (
++				<section className="delivery-connect">
++					<div>
++						<h2>Connect your work.</h2>
++						<p>
++							Use your personal Todoless key. It stays in memory for this tab
++							and is cleared when you disconnect or leave. HopKit does not save
++							it.
++						</p>
++						<p className="delivery-muted">
++							Signed in to HopKit as {email}. Your Todoless identity and
++							permissions come from the key you enter.
++						</p>
++					</div>
++					<form
++						className="delivery-form"
++						onSubmit={(event) => {
++							event.preventDefault();
++							if (connecting.current) return;
++							connecting.current = true;
++							setBusy(true);
++							setError("");
++							const input = event.currentTarget.elements.namedItem(
++								"key",
++							) as HTMLInputElement;
++							const client = new DeliveryClient(input.value.trim());
++							input.value = "";
++							clientRef.current = client;
++							void (async () => {
++								try {
++									const me = await client.get<{
++										user: Connection["user"];
++										scopes: string[];
++										workspace_id?: string | null;
++									}>("/v1/me");
++									if (me.workspace_id !== null)
++										throw new Error(
++											"Use a personal key and the current Todoless API. Workspace keys cannot record human time.",
++										);
++									const workspaces = await client.all<Workspace>(
++										"/v1/workspaces",
++										"workspaces",
++									);
++									setConnection({
++										client,
++										user: me.user,
++										scopes: me.scopes,
++										workspaces,
++									});
++									setWorkspaceId(workspaces[0]?.id ?? "");
++								} catch (e) {
++									client.disconnect();
++									setError(
++										e instanceof Error ? e.message : "Connection failed.",
++									);
++								} finally {
++									connecting.current = false;
++									setBusy(false);
++								}
++							})();
++						}}
++					>
++						<label>
++							Personal Todoless key
++							<input
++								name="key"
++								type="password"
++								autoComplete="off"
++								spellCheck={false}
++								required
++								minLength={16}
++								maxLength={512}
++							/>
++						</label>
++						<p className="delivery-muted">
++							Needs workspace:read and members:read. Add workspace:write to log
++							time and update tasks.
++						</p>
++						<button className="button button--primary" disabled={busy}>
++							{busy ? "Connecting..." : "Connect Todoless"}
++						</button>
++						{error && <p role="alert">{error}</p>}
++					</form>
++				</section>
++			) : (
++				<>
++					<section className="delivery-connection">
++						<div>
++							<span className="delivery-muted">Connected as</span>
++							<strong>{connection.user.email}</strong>
++						</div>
++						<label>
++							Workspace
++							<select
++								aria-label="Workspace"
++								value={workspaceId}
++								onChange={(e) => setWorkspaceId(e.target.value)}
++								disabled={busy || connection.client.needsRetry}
++							>
++								<option value="" disabled>
++									Choose a workspace
++								</option>
++								{connection.workspaces.map((w) => (
++									<option key={w.id} value={w.id}>
++										{w.name}
++									</option>
++								))}
++							</select>
++						</label>
++						<button
++							type="button"
++							className="text-button"
++							disabled={busy}
++							onClick={disconnect}
++						>
++							Disconnect &amp; clear key
++						</button>
++					</section>
++					{workspace ? (
++						<WorkspaceDelivery
++							key={workspace.id}
++							{...{ connection, workspace }}
++							onLock={setBusy}
++							onWorkspace={setWorkspaceId}
++						/>
++					) : (
++						<p>No Todoless workspaces are available for this key.</p>
++					)}
++				</>
++			)}
++			<footer className="delivery-footer">
++				Todoless keeps the task and time records. Payments remain manual.
++			</footer>
++		</main>
++	);
++}
+diff --git a/apps/web/src/react-app/DeliveryPortfolio.tsx b/apps/web/src/react-app/DeliveryPortfolio.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/DeliveryPortfolio.tsx
+@@ -0,0 +1,333 @@
++import { useCallback, useState } from "react";
++import { currentWeek, type DeliveryClient } from "./delivery-client";
++import { useDeliveryResource } from "./use-delivery-resource";
++import type { RunDelivery } from "./DeliveryQueue";
++import { availabilityCommand, type Portfolio } from "./portfolio-client";
++
++export function PortfolioAvailability({
++	days,
++	save,
++}: {
++	days: Portfolio["availability"];
++	save: (days: Portfolio["availability"]) => void;
++}) {
++	return (
++		<form
++			className="delivery-form"
++			aria-label="Personal availability"
++			onSubmit={(e) => {
++				e.preventDefault();
++				save(
++					availabilityCommand(
++						new FormData(e.currentTarget),
++						days.map((d) => d.date),
++					),
++				);
++			}}
++		>
++			<p>
++				One shared budget across your projects, up to 2 hours a day. Blank means
++				unset; 0 means no availability. Several zero days are fine.
++			</p>
++			{days.map((day) => (
++				<label key={day.date}>
++					{day.date} · minutes (0–120)
++					<input
++						type="number"
++						name={day.date}
++						min="0"
++						max="120"
++						step="1"
++						defaultValue={day.minutes ?? ""}
++						placeholder="Unset"
++					/>
++				</label>
++			))}
++			<button className="button">Save availability</button>
++		</form>
++	);
++}
++export function DeliveryPortfolio({
++	client,
++	refresh,
++	run,
++	canWrite,
++	openQueue,
++}: {
++	client: DeliveryClient;
++	refresh: number;
++	run: RunDelivery;
++	canWrite: boolean;
++	openQueue: (workspace: string) => void;
++}) {
++	const [week, setWeek] = useState(() => currentWeek("Europe/Amsterdam", 1));
++	const load = useCallback(
++		() =>
++			client.get<Portfolio>(
++				`/v1/me/portfolio?week_start_date=${encodeURIComponent(week)}`,
++			),
++		[client, week],
++	);
++	const { data, error } = useDeliveryResource(load, `${week}:${refresh}`);
++	const save = (body: Record<string, unknown>) =>
++		void run(() =>
++			client.mutate("PUT", "/v1/me/portfolio", {
++				version: data!.version,
++				...body,
++			}),
++		);
++	function card(task: NonNullable<Portfolio["active_priority"]>) {
++		return (
++			<article className="delivery-task" key={task.id}>
++				<small>
++					{data?.projects.find((p) => p.id === task.project_id)?.name} ·{" "}
++					{task.stage.toLowerCase()}
++				</small>
++				<h3>{task.title}</h3>
++				<small>{task.id}</small>
++				<p>
++					<strong>Next:</strong>{" "}
++					{task.details.next_action || "Set the next action in the task queue."}
++				</p>
++				{task.blocker && (
++					<p className="delivery-notice">
++						{task.blocker.reason}
++						<br />
++						Next: {task.blocker.next_action}
++					</p>
++				)}
++				{!!task.readiness_issues.length && (
++					<p>
++						{task.readiness_issues
++							.map((s) => s.replaceAll("_", " "))
++							.join("; ")}
++					</p>
++				)}
++				<button
++					type="button"
++					className="text-button"
++					onClick={() => openQueue(task.workspace_id)}
++				>
++					Open workspace queue
++				</button>
++			</article>
++		);
++	}
++	return (
++		<section aria-label="Personal project portfolio">
++			<h2>Pick up where you left off.</h2>
++			<p>
++				One personal portfolio across selected projects and workspaces. Tasks,
++				owners and approval gates stay in their existing queues.
++			</p>
++			<label>
++				Week starting Monday{" "}
++				<input
++					type="date"
++					value={week}
++					onChange={(e) => setWeek(e.target.value)}
++				/>
++			</label>
++			{error ? (
++				<p role="alert">{error}</p>
++			) : !data ? (
++				<p role="status">Loading portfolio...</p>
++			) : (
++				<>
++					<p>
++						Personal calendar: Monday · {data.timezone}. Availability is
++						separate from logged hours, weekly approval and payment. Skipped
++						days do not create overdue tasks.
++					</p>
++					<details>
++						<summary>Choose portfolio projects</summary>
++						<form
++							className="delivery-form"
++							key={`projects:${data.version}`}
++							onSubmit={(e) => {
++								e.preventDefault();
++								save({
++									project_ids: new FormData(e.currentTarget).getAll("project"),
++								});
++							}}
++						>
++							<fieldset disabled={!canWrite}>
++								<p>
++									Select independent projects only. Nothing is created, copied
++									or moved; company work stays in Linear.
++								</p>
++								{data.projects.map((p) => (
++									<label key={p.id}>
++										<input
++											type="checkbox"
++											name="project"
++											value={p.id}
++											defaultChecked={data.project_ids.includes(p.id)}
++										/>{" "}
++										{p.name} · {p.workspace_name}
++									</label>
++								))}
++								<button className="button">Save project selection</button>
++							</fieldset>
++						</form>
++					</details>
++					{!data.project_ids.length && (
++						<p className="delivery-notice">
++							Choose your existing projects to start. No projects are included
++							automatically.
++						</p>
++					)}
++					<h3>
++						{data.paused ? "Personal work paused" : "Current active priority"}
++					</h3>
++					{data.resume_note && (
++						<p className="delivery-notice">
++							<strong>When you return:</strong> {data.resume_note}
++						</p>
++					)}
++					{data.active_priority ? (
++						card(data.active_priority)
++					) : (
++						<p>
++							No active assignment in these projects. Start work through its
++							existing task queue.
++						</p>
++					)}
++					{data.active_conflict && (
++						<p role="status">
++							Other work is active in existing queues. This view highlights one
++							priority; it does not silently reassign or pause the other tasks.
++						</p>
++					)}
++					{!!data.other_active.length && (
++						<form
++							className="delivery-form"
++							onSubmit={(e) => {
++								e.preventDefault();
++								save({
++									focus_task_id: new FormData(e.currentTarget).get("focus"),
++								});
++							}}
++						>
++							<fieldset disabled={!canWrite}>
++								<label>
++									Active priority{" "}
++									<select name="focus" defaultValue={data.active_priority?.id}>
++										{[data.active_priority, ...data.other_active]
++											.filter((t) => t !== null)
++											.map((t) => (
++												<option key={t.id} value={t.id}>
++													{t.title}
++												</option>
++											))}
++									</select>
++								</label>
++								<button className="button">Choose priority</button>
++							</fieldset>
++						</form>
++					)}
++					<form
++						className="delivery-form"
++						key={`pause:${data.version}`}
++						onSubmit={(e) => {
++							e.preventDefault();
++							const f = new FormData(e.currentTarget);
++							save({
++								focus_task_id: data.active_priority?.id ?? null,
++								paused: f.has("paused"),
++								resume_note: String(f.get("note") ?? ""),
++							});
++						}}
++					>
++						<fieldset disabled={!canWrite}>
++							<label>
++								<input
++									type="checkbox"
++									name="paused"
++									defaultChecked={data.paused}
++								/>{" "}
++								Pause personal work
++							</label>
++							<label>
++								Where to resume{" "}
++								<textarea
++									name="note"
++									maxLength={2000}
++									defaultValue={data.resume_note}
++								/>
++							</label>
++							<p>
++								Leave a restart note when pausing. Resume by unchecking; the
++								note and task evidence remain. Pausing keeps the current task's
++								active slot.
++							</p>
++							<button className="button">Save pause / resume</button>
++						</fieldset>
++					</form>
++					<h3>Ready fallbacks · {data.ready_alternatives.length}/2</h3>
++					{data.ready_alternatives.map(card)}
++					{!data.ready_alternatives.length && (
++						<p>No Ready fallbacks yet. Prepare them in the existing queues.</p>
++					)}
++					<h3>Current blockers · {data.blocked.length}</h3>
++					{data.blocked.map(card)}
++					<p>
++						{data.review.length} awaiting review · {data.verify.length} awaiting
++						verification
++					</p>
++					<details>
++						<summary>Optional daily availability</summary>
++						<fieldset disabled={!canWrite}>
++							<PortfolioAvailability
++								key={`days:${week}:${data.version}`}
++								days={data.availability}
++								save={(availability) => save({ availability })}
++							/>
++							<form
++								className="delivery-form"
++								onSubmit={(e) => {
++									e.preventDefault();
++									save({
++										timezone: String(
++											new FormData(e.currentTarget).get("timezone") ?? "",
++										),
++									});
++								}}
++							>
++								<label>
++									Personal overview time zone{" "}
++									<input
++										name="timezone"
++										required
++										maxLength={100}
++										defaultValue={data.timezone}
++									/>
++								</label>
++								<button className="button">Save personal time zone</button>
++							</form>
++						</fieldset>
++					</details>
++					<h3>Updates during this week · {data.progress.length}</h3>
++					{data.progress.length ? (
++						<ol>
++							{data.progress.map((p) => (
++								<li key={p.id}>
++									<strong>{p.title}</strong> · {p.date}
++									<p>
++										{p.reason}
++										{p.stage ? ` · ${p.stage.toLowerCase()}` : ""}
++									</p>
++								</li>
++							))}
++						</ol>
++					) : (
++						<p>
++							No task updates recorded in this week. There is no missed-day
++							penalty.
++						</p>
++					)}
++				</>
++			)}
++		</section>
++	);
++}
+diff --git a/apps/web/src/react-app/DeliveryQueue.tsx b/apps/web/src/react-app/DeliveryQueue.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/DeliveryQueue.tsx
+@@ -0,0 +1,457 @@
++import { useCallback, useState } from "react";
++import { DeliveryClient } from "./delivery-client";
++import {
++	DeliveryProgressForm,
++	DeliveryTaskHistory,
++} from "./DeliveryTaskUpdates";
++import { canUpdateProgress } from "./delivery-task-updates";
++import type {
++	DeliveryCard,
++	Person,
++	Project,
++	Queue,
++	Stage,
++	Workspace,
++} from "./delivery-types";
++import { useDeliveryResource } from "./use-delivery-resource";
++
++export type RunDelivery = (action: () => Promise<unknown>) => Promise<void>;
++const moves: Record<Stage, Stage[]> = {
++	BACKLOG: ["READY", "BLOCKED"],
++	READY: ["ACTIVE", "BLOCKED", "BACKLOG"],
++	ACTIVE: ["REVIEW", "BLOCKED", "BACKLOG"],
++	BLOCKED: ["READY", "BACKLOG"],
++	REVIEW: ["VERIFY", "ACTIVE", "BLOCKED"],
++	VERIFY: ["DONE", "ACTIVE", "BLOCKED"],
++	DONE: [],
++	ARCHIVED: [],
++};
++export function Reference({ value }: { value: string }) {
++	return /^https?:\/\//i.test(value) ? (
++		<a href={value} target="_blank" rel="noreferrer">
++			{value}
++		</a>
++	) : (
++		<span>{value}</span>
++	);
++}
++function TaskCard({
++	card,
++	workspace,
++	people,
++	projects,
++	userId,
++	canWrite,
++	occupied,
++	client,
++	run,
++}: {
++	card: DeliveryCard;
++	workspace: Workspace;
++	people: Person[];
++	projects: Project[];
++	userId: string;
++	canWrite: boolean;
++	occupied: boolean;
++	client: DeliveryClient;
++	run: RunDelivery;
++}) {
++	const [editing, setEditing] = useState<"status" | "progress" | null>(null);
++	const [stage, setStage] = useState<Stage | "">("");
++	const reviewer =
++		["OWNER", "ADMIN"].includes(workspace.role) ||
++		card.reviewer_user_id === userId;
++	const available = moves[card.stage].filter(
++		(next) =>
++			!(["VERIFY", "DONE"].includes(next) && !reviewer) &&
++			!(
++				next === "ACTIVE" &&
++				(occupied || (!card.can_start && card.stage === "READY"))
++			),
++	);
++	const person = (id: string | null) =>
++		people.find((p) => p.user_id === id)?.display_name ||
++		people.find((p) => p.user_id === id)?.email ||
++		id ||
++		"Unassigned";
++	return (
++		<article className="delivery-task">
++			<div className="delivery-task__meta">
++				<span>
++					{projects.find((p) => p.id === card.project_id)?.name ??
++						card.project_id ??
++						"No project"}
++				</span>
++				<span>{card.effective_stage.toLowerCase()}</span>
++			</div>
++			<h3>{card.title}</h3>
++			<p>{card.details.outcome || "Outcome has not been recorded."}</p>
++			{card.details.next_action && (
++				<p>
++					<strong>Next:</strong> {card.details.next_action}
++				</p>
++			)}
++			{card.blocker && card.effective_stage === "BLOCKED" && (
++				<p className="delivery-notice">
++					<strong>{person(card.blocker.owner_user_id)}:</strong>{" "}
++					{card.blocker.reason}
++					<br />
++					Next: {card.blocker.next_action}
++				</p>
++			)}
++			{card.readiness_issues.length > 0 && (
++				<ul className="delivery-issues">
++					{card.readiness_issues.map((issue) => (
++						<li key={issue}>{issue.replaceAll("_", " ")}</li>
++					))}
++				</ul>
++			)}
++			<details>
++				<summary>Brief, dependencies &amp; evidence</summary>
++				<p>{card.details.scope || "No scope recorded."}</p>
++				<p>Reviewer: {person(card.reviewer_user_id)}</p>
++				<p>
++					<Reference value={card.details.repository} />
++				</p>
++				<ul>
++					{card.details.contract_refs.map((ref) => (
++						<li key={ref}>
++							<Reference value={ref} />
++						</li>
++					))}
++				</ul>
++				<ul>
++					{card.details.acceptance_checks.map((check) => (
++						<li key={check}>{check}</li>
++					))}
++				</ul>
++				<p>
++					{card.details.integration_mode === "fixture"
++						? "Fixture integration"
++						: "Live integration"}
++					{card.details.exclusions.length > 0
++						? ` · Excludes: ${card.details.exclusions.join(", ")}`
++						: ""}
++				</p>
++				{card.depends_on.length ? (
++					<ul>
++						{card.depends_on.map((d) => (
++							<li key={d.id}>
++								{d.satisfied ? "Complete" : "Waiting"}: {d.title}
++							</li>
++						))}
++					</ul>
++				) : (
++					<p>No dependencies.</p>
++				)}
++				<p>
++					Source complete: {card.details.source_complete ? "yes" : "no"} ·
++					Deployed: {card.details.deployed ? "yes" : "no"} · Verified:{" "}
++					{card.details.verification_passed ? "yes" : "no"} · Device accepted:{" "}
++					{card.details.device_accepted ? "yes" : "no"}
++				</p>
++				{card.details.build_ref && (
++					<p>
++						Build: <Reference value={card.details.build_ref} />
++					</p>
++				)}
++				<ul>
++					{card.details.evidence.map((ref) => (
++						<li key={ref}>
++							<Reference value={ref} />
++						</li>
++					))}
++				</ul>
++			</details>
++			<DeliveryTaskHistory client={client} card={card} />
++			{canUpdateProgress(card.stage, canWrite) && (
++				<button
++					type="button"
++					className="text-button"
++					onClick={() => setEditing(editing === "progress" ? null : "progress")}
++				>
++					{editing === "progress"
++						? "Cancel progress update"
++						: "Update progress"}
++				</button>
++			)}
++			{editing === "progress" && canUpdateProgress(card.stage, canWrite) && (
++				<DeliveryProgressForm {...{ card, people, client, run }} />
++			)}
++			{canWrite && available.length > 0 && (
++				<button
++					type="button"
++					className="text-button"
++					onClick={() => setEditing(editing === "status" ? null : "status")}
++				>
++					{editing === "status" ? "Cancel status change" : "Update status"}
++				</button>
++			)}
++			{editing === "status" && (
++				<form
++					className="delivery-form"
++					onSubmit={(event) => {
++						event.preventDefault();
++						const data = new FormData(event.currentTarget);
++						const body: Record<string, unknown> = {
++							version: card.version,
++							stage,
++							reason: String(data.get("reason")),
++						};
++						if (stage === "BLOCKED")
++							body.blocker = {
++								owner_user_id: data.get("owner"),
++								reason: data.get("reason"),
++								next_action: data.get("next"),
++							};
++						if (stage === "REVIEW")
++							body.details = {
++								source_complete: data.get("source") === "on",
++								evidence: String(data.get("evidence"))
++									.split("\n")
++									.map((s) => s.trim())
++									.filter(Boolean),
++								build_ref: String(data.get("build")),
++							};
++						if (stage === "DONE")
++							body.details = {
++								verification_passed: data.get("verified") === "on",
++								deployed: data.get("deployed") === "on",
++								device_accepted: data.get("device") === "on",
++							};
++						void run(() =>
++							client.mutate("PUT", `/v1/tasks/${card.id}/delivery`, body),
++						);
++					}}
++				>
++					<label>
++						Move to
++						<select
++							aria-label="Move to"
++							required
++							value={stage}
++							onChange={(e) => setStage(e.target.value as Stage)}
++						>
++							<option value="">Choose a status</option>
++							{available.map((s) => (
++								<option key={s} value={s}>
++									{s.toLowerCase()}
++								</option>
++							))}
++						</select>
++					</label>
++					<label>
++						Reason
++						<textarea name="reason" required maxLength={2000} />
++					</label>
++					{stage === "BLOCKED" && (
++						<>
++							<label>
++								Blocker owner
++								<select aria-label="Blocker owner" name="owner" required>
++									<option value="">Choose a person</option>
++									{people
++										.filter((p) => p.role !== "VIEWER")
++										.map((p) => (
++											<option key={p.user_id} value={p.user_id}>
++												{person(p.user_id)}
++											</option>
++										))}
++								</select>
++							</label>
++							<label>
++								Next action
++								<input name="next" required maxLength={2000} />
++							</label>
++						</>
++					)}
++					{stage === "REVIEW" && (
++						<>
++							<label>
++								Evidence references (one per line)
++								<textarea
++									name="evidence"
++									required
++									defaultValue={card.details.evidence.join("\n")}
++								/>
++							</label>
++							<label>
++								Build / commit reference
++								<input
++									name="build"
++									maxLength={2000}
++									defaultValue={card.details.build_ref}
++								/>
++							</label>
++							<label className="delivery-check">
++								<input type="checkbox" name="source" required />
++								Source is complete and ready for review
++							</label>
++						</>
++					)}
++					{stage === "DONE" && (
++						<>
++							<label className="delivery-check">
++								<input type="checkbox" name="verified" required />
++								Acceptance checks passed
++							</label>
++							<label className="delivery-check">
++								<input
++									type="checkbox"
++									name="deployed"
++									defaultChecked={card.details.deployed}
++								/>
++								This build is deployed
++							</label>
++							<label className="delivery-check">
++								<input
++									type="checkbox"
++									name="device"
++									defaultChecked={card.details.device_accepted}
++								/>
++								Accepted on device
++							</label>
++						</>
++					)}
++					{(stage === "ACTIVE" || stage === "BACKLOG") && (
++						<p className="delivery-muted">
++							Reopening clears previous completion and verification evidence.
++						</p>
++					)}
++					<button className="button button--primary" disabled={!stage}>
++						Save status
++					</button>
++				</form>
++			)}
++		</article>
++	);
++}
++export function DeliveryQueue({
++	client,
++	workspace,
++	people,
++	projects,
++	userId,
++	refresh,
++	canWrite,
++	run,
++}: {
++	client: DeliveryClient;
++	workspace: Workspace;
++	people: Person[];
++	projects: Project[];
++	userId: string;
++	refresh: number;
++	canWrite: boolean;
++	run: RunDelivery;
++}) {
++	const [person, setPerson] = useState(userId);
++	const load = useCallback(
++		() =>
++			client.get<Queue>(
++				`/v1/workspaces/${workspace.id}/delivery/queue?user_id=${person}`,
++			),
++		[client, workspace.id, person],
++	);
++	const { data, error } = useDeliveryResource(load, `${person}:${refresh}`);
++	return (
++		<section aria-label="Task queue">
++			<div className="delivery-section-heading">
++				<div>
++					<p className="eyebrow">A little focus, every day</p>
++					<h2>One thing in motion.</h2>
++				</div>
++				<label>
++					Queue for
++					<select
++						aria-label="Queue for"
++						value={person}
++						onChange={(e) => setPerson(e.target.value)}
++					>
++						{people
++							.filter((p) => p.role !== "VIEWER")
++							.map((p) => (
++								<option key={p.user_id} value={p.user_id}>
++									{p.display_name || p.email}
++								</option>
++							))}
++					</select>
++				</label>
++			</div>
++			{error ? (
++				<p role="alert">{error}</p>
++			) : !data ? (
++				<p role="status">Loading the queue...</p>
++			) : (
++				<>
++					{data.active_conflict && (
++						<p className="delivery-notice" role="alert">
++							More than one active task needs replanning. Existing assignments
++							are preserved.
++						</p>
++					)}
++					<div className="delivery-queue-grid">
++						{(
++							[
++								[
++									"In motion",
++									data.active,
++									"No active task. Start one of the ready alternatives.",
++								],
++								[
++									"Ready alternatives",
++									data.ready_alternatives,
++									"No ready alternatives yet.",
++								],
++								["Blocked", data.blocked, "Nothing blocked."],
++								["Review", data.review, "Nothing awaiting review."],
++								["Verify", data.verify, "Nothing awaiting verification."],
++							] as [string, DeliveryCard[], string][]
++						).map(([title, cards, empty]) => (
++							<section className="delivery-lane" key={title}>
++								<h3>
++									{title}{" "}
++									<span>
++										{title === "Ready alternatives"
++											? `${data.ready_alternatives.length}/2`
++											: cards.length}
++									</span>
++								</h3>
++								{title === "Ready alternatives" && (
++									<p className="delivery-muted">
++										{data.missing_ready_alternatives
++											? `${data.missing_ready_alternatives} more ready alternative${data.missing_ready_alternatives > 1 ? "s" : ""} needed.`
++											: "Two alternatives are ready."}
++										{data.ready_count > 2
++											? ` ${data.ready_count} ready in total.`
++											: ""}
++									</p>
++								)}
++								{cards.length ? (
++									cards.map((card) => (
++										<TaskCard
++											key={`${card.id}:${card.version}`}
++											{...{
++												card,
++												workspace,
++												people,
++												projects,
++												userId,
++												canWrite,
++												client,
++												run,
++											}}
++											occupied={data.active.some((c) => c.id !== card.id)}
++										/>
++									))
++								) : (
++									<p className="delivery-empty">{empty}</p>
++								)}
++							</section>
++						))}
++					</div>
++				</>
++			)}
++		</section>
++	);
++}
+diff --git a/apps/web/src/react-app/DeliveryTaskUpdates.tsx b/apps/web/src/react-app/DeliveryTaskUpdates.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/DeliveryTaskUpdates.tsx
+@@ -0,0 +1,189 @@
++import { useCallback } from "react";
++import type { DeliveryClient } from "./delivery-client";
++import type { DeliveryCard, Person, TaskHistoryEntry } from "./delivery-types";
++import type { RunDelivery } from "./DeliveryQueue";
++import { progressCommand, taskUpdates } from "./delivery-task-updates";
++import { useDeliveryResource } from "./use-delivery-resource";
++
++export function DeliveryProgressForm({
++	card,
++	people,
++	client,
++	run,
++}: {
++	card: DeliveryCard;
++	people: Person[];
++	client: DeliveryClient;
++	run: RunDelivery;
++}) {
++	return (
++		<form
++			className="delivery-form"
++			aria-label="Update task progress"
++			onSubmit={(event) => {
++				event.preventDefault();
++				const data = new FormData(event.currentTarget);
++				void run(() =>
++					client.mutate(
++						"PUT",
++						`/v1/tasks/${card.id}/delivery`,
++						progressCommand(card, data),
++					),
++				);
++			}}
++		>
++			<p>
++				Status stays {card.stage.toLowerCase()}. This update is saved in the
++				task history.
++			</p>
++			<label>
++				Progress note
++				<textarea name="progress" required maxLength={2000} />
++			</label>
++			<label>
++				Task next action
++				<input
++					name="next"
++					required
++					maxLength={2000}
++					defaultValue={card.details.next_action}
++				/>
++			</label>
++			<label>
++				Evidence references (one per line)
++				<textarea
++					name="evidence"
++					maxLength={42000}
++					defaultValue={card.details.evidence.join("\n")}
++				/>
++			</label>
++			<label>
++				Build / commit reference
++				<input
++					name="build"
++					maxLength={2000}
++					defaultValue={card.details.build_ref}
++				/>
++			</label>
++			{card.stage === "BLOCKED" && (
++				<>
++					<label>
++						Blocker owner
++						<select
++							name="owner"
++							required
++							defaultValue={card.blocker?.owner_user_id ?? ""}
++						>
++							<option value="">Choose a person</option>
++							{people
++								.filter((p) => p.role !== "VIEWER")
++								.map((p) => (
++									<option key={p.user_id} value={p.user_id}>
++										{p.display_name || p.email}
++									</option>
++								))}
++						</select>
++					</label>
++					<label>
++						Blocker reason
++						<textarea
++							name="blocker_reason"
++							required
++							maxLength={2000}
++							defaultValue={card.blocker?.reason}
++						/>
++					</label>
++					<label>
++						Blocker next action
++						<input
++							name="blocker_next"
++							required
++							maxLength={2000}
++							defaultValue={card.blocker?.next_action}
++						/>
++					</label>
++				</>
++			)}
++			<button className="button button--primary">Save progress</button>
++		</form>
++	);
++}
++export function DeliveryTaskFeedback({
++	history,
++}: {
++	history: TaskHistoryEntry[];
++}) {
++	const updates = taskUpdates(history);
++	const returned = updates.find((entry) => entry.returned);
++	const actor = (entry: TaskHistoryEntry) =>
++		entry.actor?.display_name ||
++		entry.actor?.email ||
++		entry.actor?.user_id ||
++		"Former member";
++	return (
++		<>
++			{returned && (
++				<div className="delivery-notice" aria-label="Latest task return">
++					<strong>Latest return for rework</strong>
++					<p>{returned.reason}</p>
++					<small>
++						{actor(returned)} · {returned.created_at} UTC · {returned.from} →{" "}
++						{returned.to} · Version {returned.version}
++					</small>
++				</div>
++			)}
++			<details>
++				<summary>Task updates &amp; return reasons</summary>
++				{updates.length ? (
++					<ol>
++						{updates.map((entry) => (
++							<li key={entry.id}>
++								<strong>
++									{entry.returned
++										? "Returned for rework"
++										: entry.from !== entry.to
++											? `${entry.from} → ${entry.to}`
++											: "Progress update"}
++								</strong>
++								<p>{entry.reason}</p>
++								<small>
++									{actor(entry)} · {entry.created_at} UTC · Version{" "}
++									{entry.version}
++								</small>
++							</li>
++						))}
++					</ol>
++				) : (
++					<p>No delivery updates recorded yet.</p>
++				)}
++			</details>
++		</>
++	);
++}
++export function DeliveryTaskHistory({
++	client,
++	card,
++}: {
++	client: DeliveryClient;
++	card: DeliveryCard;
++}) {
++	const load = useCallback(
++		() =>
++			client.all<TaskHistoryEntry>(`/v1/tasks/${card.id}/history`, "history"),
++		[client, card.id],
++	);
++	const { data, error } = useDeliveryResource(
++		load,
++		`${card.id}:${card.version}`,
++	);
++	return error ? (
++		<p role="alert">
++			Could not load task feedback: {error} Refresh current records to try
++			again.
++		</p>
++	) : data ? (
++		<DeliveryTaskFeedback history={data} />
++	) : (
++		<p role="status">Loading task feedback...</p>
++	);
++}
+diff --git a/apps/web/src/react-app/DeliveryWeeks.tsx b/apps/web/src/react-app/DeliveryWeeks.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/DeliveryWeeks.tsx
+@@ -0,0 +1,784 @@
++import { useCallback, useState } from "react";
++import {
++	addDays,
++	approvalCommand,
++	canApprove,
++	currentWeek,
++	DeliveryClient,
++	hours,
++} from "./delivery-client";
++import { Reference, type RunDelivery } from "./DeliveryQueue";
++import type {
++	Entry,
++	History,
++	Person,
++	Project,
++	Settings,
++	Task,
++	Week,
++	Workspace,
++} from "./delivery-types";
++import { useDeliveryResource } from "./use-delivery-resource";
++
++function EntryForm({
++	week,
++	client,
++	workspace,
++	projects,
++	editing,
++	run,
++	close,
++}: {
++	week: Week;
++	client: DeliveryClient;
++	workspace: Workspace;
++	projects: Project[];
++	editing?: Entry;
++	run: RunDelivery;
++	close: () => void;
++}) {
++	const [project, setProject] = useState(editing?.project_id ?? "");
++	const load = useCallback(
++		() =>
++			project
++				? client.all<Task>(
++						`/v1/workspaces/${workspace.id}/tasks?project_id=${project}`,
++						"tasks",
++					)
++				: Promise.resolve([]),
++		[client, workspace.id, project],
++	);
++	const { data: tasks, error } = useDeliveryResource(load, project);
++	return (
++		<form
++			className="delivery-form delivery-entry-form"
++			onSubmit={(event) => {
++				event.preventDefault();
++				const form = event.currentTarget;
++				const data = new FormData(form);
++				void run(async () => {
++					await client.mutate(
++						"POST",
++						`/v1/workspaces/${workspace.id}/time/weeks/${week.id}/actions`,
++						{
++							action: "save_entry",
++							version: week.version,
++							...(editing ? { entry_id: editing.id } : {}),
++							entry: {
++								project_id: project,
++								task_id: data.get("task"),
++								work_date: data.get("date"),
++								activity: data.get("activity"),
++								minutes: Number(data.get("minutes")),
++								note: data.get("note"),
++								evidence_ref: data.get("evidence") || null,
++							},
++						},
++					);
++					close();
++				});
++			}}
++		>
++			<h3>{editing ? "Edit time entry" : "Log human time"}</h3>
++			<div className="delivery-fields">
++				<label>
++					Project
++					<select
++						aria-label="Project"
++						required
++						value={project}
++						onChange={(e) => setProject(e.target.value)}
++					>
++						<option value="">Choose a project</option>
++						{projects.map((p) => (
++							<option key={p.id} value={p.id}>
++								{p.name}
++							</option>
++						))}
++					</select>
++				</label>
++				<label>
++					Task
++					<select
++						aria-label="Task"
++						name="task"
++						required
++						key={project}
++						defaultValue={
++							editing?.project_id === project ? editing.task_id : ""
++						}
++						disabled={!tasks || tasks.length === 0}
++					>
++						<option value="">
++							{project ? "Choose a task" : "Choose a project first"}
++						</option>
++						{tasks?.map((t) => (
++							<option key={t.id} value={t.id}>
++								{t.title}
++							</option>
++						))}
++					</select>
++				</label>
++				<label>
++					Work date
++					<input
++						name="date"
++						type="date"
++						required
++						min={week.week_start_date}
++						max={addDays(week.week_start_date, 6)}
++						defaultValue={editing?.work_date ?? week.week_start_date}
++					/>
++				</label>
++				<label>
++					Minutes
++					<input
++						name="minutes"
++						type="number"
++						required
++						min={1}
++						max={1440}
++						step={1}
++						defaultValue={editing?.minutes}
++						placeholder="e.g. 90"
++					/>
++				</label>
++				<label>
++					Activity
++					<select
++						aria-label="Activity"
++						name="activity"
++						defaultValue={editing?.activity ?? "development"}
++					>
++						{["development", "qa", "setup", "research", "rework", "review"].map(
++							(a) => (
++								<option key={a}>{a}</option>
++							),
++						)}
++					</select>
++				</label>
++			</div>
++			{error && <p role="alert">{error}</p>}
++			<label>
++				What did you work on?
++				<textarea
++					name="note"
++					required
++					maxLength={1000}
++					defaultValue={editing?.note}
++				/>
++			</label>
++			<label>
++				Evidence link (optional)
++				<input
++					name="evidence"
++					type="url"
++					pattern="https?://.*"
++					maxLength={2000}
++					defaultValue={editing?.evidence_ref ?? ""}
++				/>
++			</label>
++			<div className="delivery-actions">
++				<button className="button button--primary" disabled={!tasks?.length}>
++					Save time
++				</button>
++				<button type="button" className="text-button" onClick={close}>
++					Cancel
++				</button>
++			</div>
++		</form>
++	);
++}
++function WeekDetail({
++	week,
++	client,
++	workspace,
++	people,
++	projects,
++	userId,
++	approver,
++	canWrite,
++	run,
++}: {
++	week: Week;
++	client: DeliveryClient;
++	workspace: Workspace;
++	people: Person[];
++	projects: Project[];
++	userId: string;
++	approver: boolean;
++	canWrite: boolean;
++	run: RunDelivery;
++}) {
++	const [entry, setEntry] = useState<Entry | "new" | null>(null);
++	const [minutes, setMinutes] = useState<Record<string, string>>({});
++	const [reason, setReason] = useState("");
++	const [confirm, setConfirm] = useState(false);
++	const [overCap, setOverCap] = useState(false);
++	const [showHistory, setShowHistory] = useState(false);
++	const root = `/v1/workspaces/${workspace.id}/time/weeks/${week.id}`;
++	const loadHistory = useCallback(
++		() =>
++			showHistory
++				? client.all<History>(`${root}/history`, "events")
++				: Promise.resolve([]),
++		[client, root, showHistory],
++	);
++	const history = useDeliveryResource(
++		loadHistory,
++		`${week.version}:${showHistory}`,
++	);
++	const loadTasks = useCallback(
++		() => client.all<Task>(`/v1/workspaces/${workspace.id}/tasks`, "tasks"),
++		[client, workspace.id],
++	);
++	const taskNames = useDeliveryResource(loadTasks, workspace.id);
++	const own = week.user_id === userId;
++	const review = canWrite && canApprove(week, userId, approver);
++	const edit = canWrite && own && week.state === "draft";
++	const action = (body: Record<string, unknown>) =>
++		run(() =>
++			client.mutate("POST", `${root}/actions`, {
++				...body,
++				version: week.version,
++			}),
++		);
++	const person = (id: string) =>
++		people.find((p) => p.user_id === id)?.display_name ||
++		people.find((p) => p.user_id === id)?.email ||
++		id;
++	const total = week.entries.reduce((n, e) => n + e.minutes, 0);
++	const approved = week.approval?.entries.reduce(
++		(n, e) => n + e.approved_minutes,
++		0,
++	);
++	const totals = [...new Set(week.entries.map((e) => e.project_id))]
++		.map((id) => projects.find((p) => p.id === id) ?? { id, name: id })
++		.map((p) => ({
++			...p,
++			logged: week.entries
++				.filter((e) => e.project_id === p.id)
++				.reduce((n, e) => n + e.minutes, 0),
++			approved: week.approval?.entries
++				.filter(
++					(e) =>
++						week.entries.find((original) => original.id === e.entry_id)
++							?.project_id === p.id,
++				)
++				.reduce((n, e) => n + e.approved_minutes, 0),
++		}));
++	return (
++		<article
++			className="delivery-week"
++			aria-label={`Week for ${person(week.user_id)}`}
++		>
++			<div className="delivery-section-heading">
++				<div>
++					<p className="eyebrow">{person(week.user_id)}</p>
++					<h3>
++						{week.week_start_date} - {addDays(week.week_start_date, 6)}
++					</h3>
++					<p className="delivery-muted">
++						{week.timezone} · Revision {week.revision} ·{" "}
++						{week.state.replaceAll("_", " ")}
++					</p>
++				</div>
++				<div className="delivery-totals">
++					<strong>{hours(total)}</strong>
++					<span>{week.submission ? "submitted" : "logged"}</span>
++					<strong>
++						{approved === undefined ? "Pending" : hours(approved)}
++					</strong>
++					<span>approved</span>
++				</div>
++			</div>
++			<p className="delivery-muted">
++				Payment is manual and unrecorded here. Hours do not imply payment.
++			</p>
++			<div className="delivery-table-wrap">
++				<table>
++					<caption>Entries across all projects</caption>
++					<thead>
++						<tr>
++							<th>Date / project / task</th>
++							<th>Work</th>
++							<th>{week.submission ? "Submitted" : "Logged"}</th>
++							<th>Approved</th>
++							{edit && <th>Actions</th>}
++						</tr>
++					</thead>
++					<tbody>
++						{week.entries.map((e) => (
++							<tr key={e.id}>
++								<td data-label="Date / project / task">
++									{e.work_date}
++									<br />
++									<strong>
++										{projects.find((p) => p.id === e.project_id)?.name ??
++											e.project_id}
++									</strong>
++									<br />
++									<span>
++										{taskNames.data?.find((t) => t.id === e.task_id)?.title ??
++											e.task_id}
++									</span>
++								</td>
++								<td data-label="Work">
++									{e.activity}
++									<br />
++									{e.note}
++									{e.evidence_ref && (
++										<p>
++											<Reference value={e.evidence_ref} />
++										</p>
++									)}
++								</td>
++								<td data-label={week.submission ? "Submitted" : "Logged"}>
++									{hours(e.minutes)}
++								</td>
++								<td data-label="Approved">
++									{review ? (
++										<label>
++											<span className="delivery-muted">
++												Approved minutes: {e.note}
++											</span>
++											<input
++												type="number"
++												min={0}
++												max={e.minutes}
++												step={1}
++												required
++												aria-label={`Approved minutes: ${e.note}`}
++												value={minutes[e.id] ?? String(e.minutes)}
++												onChange={(event) =>
++													setMinutes({ ...minutes, [e.id]: event.target.value })
++												}
++											/>
++										</label>
++									) : week.approval ? (
++										hours(
++											week.approval.entries.find((a) => a.entry_id === e.id)
++												?.approved_minutes ?? 0,
++										)
++									) : (
++										"Pending"
++									)}
++								</td>
++								{edit && (
++									<td data-label="Actions">
++										<button
++											type="button"
++											className="text-button"
++											onClick={() => setEntry(e)}
++										>
++											Edit
++										</button>
++										<button
++											type="button"
++											className="text-button"
++											disabled={!reason.trim()}
++											onClick={() =>
++												void action({
++													action: "remove_entry",
++													entry_id: e.id,
++													reason,
++												})
++											}
++										>
++											Remove
++										</button>
++									</td>
++								)}
++							</tr>
++						))}
++					</tbody>
++				</table>
++				{week.entries.length === 0 && (
++					<p className="delivery-empty">
++						No time logged yet. Add actual human work, including QA, setup and
++						rework.
++					</p>
++				)}
++			</div>
++			<ul className="delivery-project-totals">
++				{totals
++					.filter((p) => p.logged > 0)
++					.map((p) => (
++						<li key={p.id}>
++							<strong>{p.name}</strong> {hours(p.logged)}{" "}
++							{week.submission ? "submitted" : "logged"} ·{" "}
++							{p.approved === undefined
++								? "approval pending"
++								: `${hours(p.approved)} approved`}
++						</li>
++					))}
++			</ul>
++			{week.approval?.reason && (
++				<p className="delivery-notice">
++					Approval reason: {week.approval.reason}
++				</p>
++			)}
++			{week.approval && (
++				<p className="delivery-muted">
++					Approved by {person(week.approval.actor_user_id)}.{" "}
++					{week.approval.entries.some((e) => e.amount_minor === null)
++						? "Some or all hours are unpriced; rate and currency are not assumed."
++						: "Amounts and currencies are available in CSV."}
++				</p>
++			)}
++			{own && week.state === "submitted" && (
++				<p className="delivery-notice">
++					Submitted for another person to review. You cannot approve your own
++					week.
++				</p>
++			)}
++			{(edit ||
++				review ||
++				(canWrite &&
++					own &&
++					["approved", "changes_requested"].includes(week.state))) && (
++				<label className="delivery-reason">
++					Reason (required for returns, adjustments, revisions and removals)
++					<textarea
++						value={reason}
++						onChange={(e) => setReason(e.target.value)}
++						maxLength={1000}
++					/>
++				</label>
++			)}
++			{edit && (
++				<>
++					<div className="delivery-actions">
++						<button
++							type="button"
++							className="button button--secondary"
++							onClick={() => setEntry("new")}
++						>
++							Log time
++						</button>
++					</div>
++					{entry && (
++						<EntryForm
++							key={typeof entry === "string" ? "new" : entry.id}
++							{...{ week, client, workspace, projects, run }}
++							editing={entry === "new" ? undefined : entry}
++							close={() => setEntry(null)}
++						/>
++					)}
++					<label className="delivery-check">
++						<input
++							type="checkbox"
++							checked={confirm}
++							onChange={(e) => setConfirm(e.target.checked)}
++						/>
++						I confirm these entries are actual human time worked.
++					</label>
++					<button
++						type="button"
++						className="button button--primary"
++						disabled={!confirm || !week.entries.length}
++						onClick={() =>
++							void action({ action: "submit", confirmed_human_time: true })
++						}
++					>
++						Submit week for approval
++					</button>
++				</>
++			)}
++			{review && (
++				<>
++					<label className="delivery-check">
++						<input
++							type="checkbox"
++							checked={confirm}
++							onChange={(e) => setConfirm(e.target.checked)}
++						/>
++						I have reviewed every entry and the approved minutes.
++					</label>
++					<label className="delivery-check">
++						<input
++							type="checkbox"
++							checked={overCap}
++							onChange={(e) => setOverCap(e.target.checked)}
++						/>
++						Explicitly approve an agreed cap overrun, if applicable
++					</label>
++					{week.submission?.over_cap && (
++						<p className="delivery-notice">
++							This submission exceeds the cap recorded at submission. Approve
++							the overrun explicitly or return it.
++						</p>
++					)}
++					<div className="delivery-actions">
++						<button
++							type="button"
++							className="button button--primary"
++							disabled={!confirm}
++							onClick={() =>
++								void run(() =>
++									client.mutate(
++										"POST",
++										`${root}/actions`,
++										approvalCommand(week, minutes, reason, overCap),
++									),
++								)
++							}
++						>
++							Approve week
++						</button>
++						<button
++							type="button"
++							className="button button--secondary"
++							disabled={!reason.trim()}
++							onClick={() => void action({ action: "request_changes", reason })}
++						>
++							Return with reason
++						</button>
++					</div>
++				</>
++			)}
++			{canWrite &&
++				own &&
++				["approved", "changes_requested"].includes(week.state) && (
++					<button
++						type="button"
++						className="button button--secondary"
++						disabled={!reason.trim()}
++						onClick={() => void action({ action: "revise", reason })}
++					>
++						Create revision
++					</button>
++				)}
++			<div className="delivery-history">
++				<button
++					type="button"
++					className="text-button"
++					onClick={() => setShowHistory(!showHistory)}
++				>
++					{showHistory
++						? "Hide audit trail"
++						: "Show audit trail & return reasons"}
++				</button>
++				{showHistory &&
++					(history.error ? (
++						<p role="alert">{history.error}</p>
++					) : !history.data ? (
++						<p>Loading history...</p>
++					) : (
++						<ol>
++							{history.data.map((event) => (
++								<li key={event.id}>
++									<strong>{event.action.replaceAll("_", " ")}</strong> ·{" "}
++									{person(event.actor_user_id)} · {event.created_at}
++									{event.reason && <p>{event.reason}</p>}
++									<p>
++										{hours(
++											event.document.entries.reduce((n, e) => n + e.minutes, 0),
++										)}{" "}
++										recorded
++										{event.document.approval
++											? ` / ${hours(event.document.approval.entries.reduce((n, e) => n + e.approved_minutes, 0))} approved`
++											: ""}{" "}
++										· revision {event.document.revision}
++									</p>
++								</li>
++							))}
++						</ol>
++					))}
++			</div>
++		</article>
++	);
++}
++export function DeliveryWeeks({
++	client,
++	workspace,
++	people,
++	projects,
++	userId,
++	settings,
++	refresh,
++	canWrite,
++	run,
++	team,
++}: {
++	client: DeliveryClient;
++	workspace: Workspace;
++	people: Person[];
++	projects: Project[];
++	userId: string;
++	settings: Settings;
++	refresh: number;
++	canWrite: boolean;
++	run: RunDelivery;
++	team: boolean;
++}) {
++	const initialDate = settings.settings
++		? currentWeek(settings.settings.timezone, settings.settings.week_start)
++		: "";
++	const [date, setDate] = useState(initialDate);
++	const [selected, setSelected] = useState("");
++	const [downloadError, setDownloadError] = useState("");
++	const root = `/v1/workspaces/${workspace.id}/time`;
++	const query = `from=${date}&to=${date}${team ? "&user_id=all" : ""}`;
++	const load = useCallback(
++		() =>
++			date
++				? client.all<Week>(`${root}/weeks?${query}`, "weeks")
++				: Promise.resolve([]),
++		[client, root, query, date],
++	);
++	const { data: weeks, error } = useDeliveryResource(
++		load,
++		`${query}:${refresh}`,
++	);
++	const week = weeks?.find((w) => w.id === selected) ?? weeks?.[0];
++	async function exportCsv() {
++		setDownloadError("");
++		try {
++			const csv = await client.get<string>(`${root}/export.csv?${query}`);
++			const url = URL.createObjectURL(
++				new Blob([csv], { type: "text/csv;charset=utf-8" }),
++			);
++			const link = document.createElement("a");
++			link.href = url;
++			link.download = `hours-${date}.csv`;
++			link.click();
++			URL.revokeObjectURL(url);
++		} catch (e) {
++			setDownloadError(e instanceof Error ? e.message : "Export failed.");
++		}
++	}
++	if (!settings.settings)
++		return (
++			<section className="delivery-week">
++				<h2>Agree the week first.</h2>
++				<p>
++					The Todoless owner must confirm the timezone and week start before
++					time can be logged. No rate, currency or cap is assumed.
++				</p>
++				<p>
++					Configure the agreed calendar through Todoless API/MCP, then refresh.
++				</p>
++			</section>
++		);
++	return (
++		<section aria-label={team ? "Weekly approval" : "My hours"}>
++			<div className="delivery-section-heading">
++				<div>
++					<p className="eyebrow">
++						{team
++							? "Give work a fair review"
++							: "Small entries, one shared week"}
++					</p>
++					<h2>{team ? "Weekly approval." : "Your time, across projects."}</h2>
++				</div>
++				<label>
++					Week starting
++					<input
++						type="date"
++						required
++						value={date}
++						onChange={(e) => {
++							setDate(e.target.value);
++							setSelected("");
++						}}
++					/>
++				</label>
++			</div>
++			<p className="delivery-muted">
++				{
++					[
++						"Sunday",
++						"Monday",
++						"Tuesday",
++						"Wednesday",
++						"Thursday",
++						"Friday",
++						"Saturday",
++					][settings.settings.week_start]
++				}{" "}
++				· {settings.settings.timezone}. Shared availability is not a billing
++				cap.
++			</p>
++			<div className="delivery-actions">
++				<button
++					className="text-button"
++					type="button"
++					disabled={!date}
++					onClick={() => void exportCsv()}
++				>
++					Export this week as CSV
++				</button>
++			</div>
++			{downloadError && <p role="alert">{downloadError}</p>}
++			{error ? (
++				<p role="alert">{error}</p>
++			) : !weeks ? (
++				<p role="status">Loading weeks...</p>
++			) : (
++				<>
++					{weeks.length > 1 && (
++						<label>
++							Submission
++							<select
++								aria-label="Submission"
++								value={week?.id ?? ""}
++								onChange={(e) => setSelected(e.target.value)}
++							>
++								{weeks.map((w) => (
++									<option key={w.id} value={w.id}>
++										{people.find((p) => p.user_id === w.user_id)
++											?.display_name ||
++											people.find((p) => p.user_id === w.user_id)?.email ||
++											w.user_id}{" "}
++										· {w.state.replaceAll("_", " ")}
++									</option>
++								))}
++							</select>
++						</label>
++					)}
++					{!week ? (
++						<div className="delivery-empty">
++							<p>
++								{team
++									? "No submissions for this week."
++									: "No week started yet."}
++							</p>
++							{!team && canWrite && (
++								<button
++									type="button"
++									className="button button--primary"
++									disabled={!date}
++									onClick={() =>
++										void run(() =>
++											client.mutate("POST", `${root}/weeks`, {
++												week_start_date: date,
++											}),
++										)
++									}
++								>
++									Start this week
++								</button>
++							)}
++						</div>
++					) : (
++						<WeekDetail
++							key={`${week.id}:${week.version}`}
++							{...{
++								week,
++								client,
++								workspace,
++								people,
++								projects,
++								userId,
++								canWrite,
++								run,
++							}}
++							approver={settings.access.can_approve}
++						/>
++					)}
++				</>
++			)}
++		</section>
++	);
++}
+diff --git a/apps/web/src/react-app/PlanningDashboard.tsx b/apps/web/src/react-app/PlanningDashboard.tsx
+--- a/apps/web/src/react-app/PlanningDashboard.tsx
++++ b/apps/web/src/react-app/PlanningDashboard.tsx
+@@ -1483,6 +1483,7 @@
+ 									<span dir="ltr">{user.email}</span>
+ 								</div>
+ 							</div>
++							<a className="text-button" href="/delivery" lang="en">Delivery</a>
+ 							<a className="text-button" href="/connectors">
+ 								{t("connectors.title")}
+ 							</a>
+diff --git a/apps/web/src/react-app/delivery-client.test.ts b/apps/web/src/react-app/delivery-client.test.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/delivery-client.test.ts
+@@ -0,0 +1,137 @@
++import { describe, expect, it, vi } from "vitest";
++import {
++	approvalCommand,
++	canApprove,
++	currentWeek,
++	DeliveryClient,
++} from "./delivery-client";
++import type { Week } from "./delivery-types";
++const success = (data: unknown) => Response.json({ success: true, data });
++const week: Week = {
++	id: "week",
++	workspace_id: "ws",
++	user_id: "person",
++	week_start_date: "2026-10-19",
++	week_start: 1,
++	timezone: "Europe/Amsterdam",
++	state: "submitted",
++	version: 7,
++	revision: 1,
++	entries: [
++		{
++			id: "entry",
++			project_id: "grow",
++			task_id: "task",
++			work_date: "2026-10-20",
++			activity: "qa",
++			minutes: 90,
++			note: "Device QA",
++		},
++	],
++	submission: { at: "now", over_cap: false, cap_minutes: null },
++	approval: null,
++	payment_status: "manual_unrecorded",
++};
++describe("Delivery client safety", () => {
++	it("retries the exact mutation and key after an ambiguous failure, blocking other writes", async () => {
++		const calls: RequestInit[] = [];
++		const send: typeof fetch = async (_input, init) => {
++			calls.push(init!);
++			if (calls.length === 1) throw new Error("Response lost");
++			return success(week);
++		};
++		const client = new DeliveryClient("synthetic-personal-key", send);
++		const body = { action: "save_entry", version: 6 };
++		await expect(client.mutate("POST", "/week/actions", body)).rejects.toThrow(
++			"Response lost",
++		);
++		body.version = 99;
++		await expect(client.mutate("POST", "/different", {})).rejects.toThrow(
++			"Retry",
++		);
++		expect(await client.retry()).toEqual(week);
++		expect(calls[0].body).toEqual(calls[1].body);
++		expect(JSON.parse(String(calls[1].body)).body.version).toBe(6);
++		expect(client.needsRetry).toBe(false);
++	});
++	it("blocks double-clicks while an action is in flight", async () => {
++		let finish!: (value: Response) => void;
++		const send = vi.fn<typeof fetch>(
++			() =>
++				new Promise((resolve) => {
++					finish = resolve;
++				}),
++		);
++		const client = new DeliveryClient("synthetic-key-value", send);
++		const pending = client.mutate("POST", "/week", {});
++		await expect(client.retry()).rejects.toThrow("already running");
++		finish(success(week));
++		await pending;
++		expect(send).toHaveBeenCalledTimes(1);
++	});
++	it("clears definitively rejected writes and discards credentials on disconnect", async () => {
++		const send = vi.fn<typeof fetch>(async () =>
++			Response.json(
++				{
++					success: false,
++					error: { code: "VERSION_CONFLICT", message: "Reload" },
++				},
++				{ status: 409 },
++			),
++		);
++		const client = new DeliveryClient("synthetic-key-value", send);
++		await expect(client.mutate("POST", "/week", {})).rejects.toThrow("Reload");
++		expect(client.needsRetry).toBe(false);
++		client.disconnect();
++		await expect(client.get("/v1/me")).rejects.toThrow("Reconnect");
++		expect(send).toHaveBeenCalledTimes(1);
++	});
++	it("reads every page and detects repeated cursors", async () => {
++		let count = 0;
++		const client = new DeliveryClient("synthetic-key-value", async () =>
++			success({
++				weeks: [++count],
++				pagination: { has_more: count === 1, next_cursor: "cursor" },
++			}),
++		);
++		expect(await client.all("/weeks?from=x", "weeks")).toEqual([1, 2]);
++		const broken = new DeliveryClient("synthetic-key-value", async () =>
++			success({
++				weeks: [],
++				pagination: { has_more: true, next_cursor: "same" },
++			}),
++		);
++		await expect(broken.all("/weeks", "weeks")).rejects.toThrow(
++			"Too many records",
++		);
++	});
++	it("keeps calendar dates stable around Amsterdam DST and midnight", () => {
++		expect(
++			currentWeek("Europe/Amsterdam", 1, new Date("2026-10-25T23:30:00Z")),
++		).toBe("2026-10-26");
++		expect(
++			currentWeek("Europe/Amsterdam", 1, new Date("2026-10-24T23:30:00Z")),
++		).toBe("2026-10-19");
++	});
++	it("forbids self approval and enforces deliberate reductions without mutating submitted entries", () => {
++		expect(canApprove(week, "person", true)).toBe(false);
++		expect(canApprove(week, "owner", false)).toBe(false);
++		expect(canApprove(week, "owner", true)).toBe(true);
++		for (const minutes of ["", "-1", "91", "1.5"])
++			expect(() =>
++				approvalCommand(week, { entry: minutes }, "reason", false),
++			).toThrow();
++		expect(() => approvalCommand(week, { entry: "60" }, "", false)).toThrow(
++			"Explain",
++		);
++		expect(
++			approvalCommand(week, { entry: "60" }, "Duplicate half hour", false),
++		).toEqual({
++			action: "approve",
++			version: 7,
++			entries: [{ entry_id: "entry", approved_minutes: 60 }],
++			reason: "Duplicate half hour",
++		});
++		expect(week.entries[0].minutes).toBe(90);
++	});
++});
+diff --git a/apps/web/src/react-app/delivery-client.ts b/apps/web/src/react-app/delivery-client.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/delivery-client.ts
+@@ -0,0 +1,204 @@
++import type { Page, Week } from "./delivery-types";
++
++type Command = {
++	method: "POST" | "PUT";
++	path: string;
++	body: Record<string, unknown>;
++	idempotency_key: string;
++};
++export class DeliveryError extends Error {
++	constructor(
++		message: string,
++		readonly status = 0,
++		readonly code = "NETWORK_ERROR",
++	) {
++		super(message);
++	}
++}
++// One instance per connection, private key in memory only. No persistent storage.
++export class DeliveryClient {
++	private pending: Command | null = null;
++	private running = false;
++	private controller = new AbortController();
++	constructor(
++		private key: string,
++		private readonly send: typeof fetch = (...args) => fetch(...args),
++	) {}
++	get needsRetry() {
++		return this.pending !== null;
++	}
++	disconnect() {
++		this.key = "";
++		this.pending = null;
++		this.controller.abort();
++	}
++	private async request<T>(envelope: {
++		method: string;
++		path: string;
++		body?: unknown;
++		idempotency_key?: string;
++	}): Promise<T> {
++		if (!this.key) throw new DeliveryError("Reconnect to Todoless.", 401);
++		const response = await this.send("/api/delivery/request", {
++			method: "POST",
++			credentials: "same-origin",
++			cache: "no-store",
++			headers: {
++				"content-type": "application/json",
++				"x-todoless-key": this.key,
++			},
++			body: JSON.stringify(envelope),
++			signal: AbortSignal.any([
++				this.controller.signal,
++				AbortSignal.timeout(25_000),
++			]),
++		});
++		if (
++			response.ok &&
++			response.headers.get("content-type")?.includes("text/csv")
++		)
++			return (await response.text()) as T;
++		let value: {
++			success?: boolean;
++			data?: T;
++			error?: { code?: string; message?: string };
++		};
++		try {
++			value = await response.json();
++		} catch {
++			throw new DeliveryError(
++				"Unexpected response. Retry the same action.",
++				502,
++			);
++		}
++		if (!response.ok || value.success !== true)
++			throw new DeliveryError(
++				value.error?.message ?? "Delivery request failed.",
++				response.status,
++				value.error?.code,
++			);
++		return value.data as T;
++	}
++	get<T>(path: string) {
++		return this.request<T>({ method: "GET", path });
++	}
++	async all<T>(path: string, field: string): Promise<T[]> {
++		const result: T[] = [];
++		let cursor: string | null = null;
++		const seen = new Set<string>();
++		do {
++			const data: Page & Record<string, unknown> = await this.get(
++				`${path}${path.includes("?") ? "&" : "?"}limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
++			);
++			result.push(...(data[field] as T[]));
++			cursor = data.pagination?.has_more ? data.pagination.next_cursor : null;
++			if (
++				(data.pagination?.has_more && (!cursor || seen.has(cursor))) ||
++				result.length > 5000
++			)
++				throw new DeliveryError("Too many records. Narrow the selected range.");
++			if (cursor) seen.add(cursor);
++		} while (cursor);
++		return result;
++	}
++	async mutate<T>(
++		method: "POST" | "PUT",
++		path: string,
++		body: Record<string, unknown>,
++	): Promise<T> {
++		if (this.pending)
++			throw new DeliveryError("Retry the pending action first.");
++		this.pending = {
++			method,
++			path,
++			body: structuredClone(body),
++			idempotency_key: crypto.randomUUID(),
++		};
++		return this.retry<T>();
++	}
++	async retry<T>(): Promise<T> {
++		if (this.running || !this.pending)
++			throw new DeliveryError(
++				"An action is already running, or there is nothing to retry.",
++			);
++		this.running = true;
++		try {
++			const result = await this.request<T>(this.pending);
++			this.pending = null;
++			return result;
++		} catch (error) {
++			// Definitive rejections cannot have committed. Unknown outcomes keep the exact command/key.
++			if (
++				error instanceof DeliveryError &&
++				((error.status >= 400 && error.status < 500) ||
++					error.code === "DELIVERY_NOT_CONFIGURED")
++			)
++				this.pending = null;
++			throw error;
++		} finally {
++			this.running = false;
++		}
++	}
++}
++export function addDays(date: string, days: number) {
++	const value = new Date(`${date}T12:00:00Z`);
++	value.setUTCDate(value.getUTCDate() + days);
++	return value.toISOString().slice(0, 10);
++}
++export function hours(minutes: number) {
++	return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
++}
++export function currentWeek(timezone: string, start: number, now = new Date()) {
++	const parts = new Intl.DateTimeFormat("en-CA", {
++		timeZone: timezone,
++		year: "numeric",
++		month: "2-digit",
++		day: "2-digit",
++	}).formatToParts(now);
++	const part = (name: string) => parts.find((p) => p.type === name)!.value;
++	const date = `${part("year")}-${part("month")}-${part("day")}`;
++	return addDays(
++		date,
++		-((new Date(`${date}T12:00:00Z`).getUTCDay() - start + 7) % 7),
++	);
++}
++export function canApprove(week: Week, userId: string, approver: boolean) {
++	return approver && week.user_id !== userId && week.state === "submitted";
++}
++export function approvalCommand(
++	week: Week,
++	minutes: Record<string, string>,
++	reason: string,
++	overCap: boolean,
++) {
++	const entries = week.entries.map((entry) => ({
++		entry_id: entry.id,
++		approved_minutes: Number(minutes[entry.id] ?? entry.minutes),
++	}));
++	if (
++		entries.some(
++			(entry, index) =>
++				!Number.isInteger(entry.approved_minutes) ||
++				entry.approved_minutes < 0 ||
++				entry.approved_minutes > week.entries[index].minutes ||
++				minutes[entry.entry_id]?.trim() === "",
++		)
++	)
++		throw new Error(
++			"Approved minutes must be whole minutes between zero and the submitted amount.",
++		);
++	if (
++		entries.some(
++			(entry, index) => entry.approved_minutes !== week.entries[index].minutes,
++		) &&
++		!reason.trim()
++	)
++		throw new Error("Explain the adjustment before approving.");
++	return {
++		action: "approve",
++		version: week.version,
++		entries,
++		...(reason.trim() ? { reason: reason.trim() } : {}),
++		...(overCap ? { over_cap_decision: "approve" } : {}),
++	};
++}
+diff --git a/apps/web/src/react-app/delivery-task-updates.test.tsx b/apps/web/src/react-app/delivery-task-updates.test.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/delivery-task-updates.test.tsx
+@@ -0,0 +1,205 @@
++import { renderToStaticMarkup } from "react-dom/server";
++import { describe, expect, it } from "vitest";
++import { DeliveryClient } from "./delivery-client";
++import {
++	DeliveryProgressForm,
++	DeliveryTaskFeedback,
++} from "./DeliveryTaskUpdates";
++import {
++	canUpdateProgress,
++	progressCommand,
++	taskUpdates,
++} from "./delivery-task-updates";
++import type { DeliveryCard, Stage, TaskHistoryEntry } from "./delivery-types";
++const card: DeliveryCard = {
++	id: "task",
++	title: "Referral acceptance",
++	project_id: "veloura",
++	assignee_user_id: "dev",
++	status: "IN_PROGRESS",
++	version: 8,
++	stage: "ACTIVE",
++	effective_stage: "ACTIVE",
++	reviewer_user_id: "owner",
++	can_start: true,
++	readiness_issues: [],
++	blocker: null,
++	depends_on: [],
++	details: {
++		outcome: "Acceptance script",
++		scope: "Preparation",
++		next_action: "Check the account switch",
++		repository: "repo",
++		contract_refs: [],
++		acceptance_checks: [],
++		evidence: ["docs/qa.md"],
++		build_ref: "build59",
++		source_complete: false,
++		deployed: false,
++		verification_passed: false,
++		device_accepted: false,
++		integration_mode: "fixture",
++		exclusions: ["Live claims"],
++	},
++};
++function form() {
++	const data = new FormData();
++	for (const [key, value] of Object.entries({
++		progress: "Mapped pending state",
++		next: "Reproduce offline switch",
++		evidence: "docs/qa.md\n\ndocs/switch.md",
++		build: "build59",
++	}))
++		data.set(key, value);
++	return data;
++}
++function event(
++	version: number,
++	from: Stage,
++	to: Stage,
++	reason: string,
++): TaskHistoryEntry {
++	return {
++		id: `event-${version}`,
++		actor: {
++			user_id: "owner",
++			email: "owner@example.test",
++			display_name: "Reza",
++		},
++		change_type: from === to ? "UPDATED" : "STATUS_CHANGED",
++		created_at: "2026-10-23 00:00:00",
++		from_value: { stage: from },
++		to_value: { stage: to, version },
++		metadata: { workflow: "delivery", reason },
++	};
++}
++describe("Task progress and return feedback", () => {
++	it("sends versioned progress without status, assignments or completion flags", () => {
++		const original = structuredClone(card);
++		expect(progressCommand(card, form())).toEqual({
++			version: 8,
++			reason: "Mapped pending state",
++			details: {
++				next_action: "Reproduce offline switch",
++				evidence: ["docs/qa.md", "docs/switch.md"],
++				build_ref: "build59",
++			},
++		});
++		expect(card).toEqual(original);
++	});
++	it("edits the blocker in place and requires owner, reason and next action", () => {
++		const blocked = { ...card, stage: "BLOCKED" as const };
++		const data = form();
++		for (const key of ["owner", "blocker_reason", "blocker_next"]) {
++			expect(() => progressCommand(blocked, data)).toThrow("required fields");
++			data.set(
++				key,
++				key === "owner" ? "owner" : "Waiting for the assigned build",
++			);
++		}
++		expect(progressCommand(blocked, data).blocker).toEqual({
++			owner_user_id: "owner",
++			reason: "Waiting for the assigned build",
++			next_action: "Waiting for the assigned build",
++		});
++		expect(progressCommand(blocked, data)).not.toHaveProperty("stage");
++	});
++	it.each(["BACKLOG", "READY", "ACTIVE", "BLOCKED"] as Stage[])(
++		"permits progress in %s only with write access",
++		(stage) => {
++			expect(canUpdateProgress(stage, true)).toBe(true);
++			expect(canUpdateProgress(stage, false)).toBe(false);
++		},
++	);
++	it.each(["REVIEW", "VERIFY", "DONE", "ARCHIVED"] as Stage[])(
++		"keeps %s evidence/scope protected",
++		(stage) => {
++			expect(canUpdateProgress(stage, true)).toBe(false);
++			expect(() => progressCommand({ ...card, stage }, form())).toThrow(
++				"Return this task",
++			);
++		},
++	);
++	it("rejects blank progress, missing next action and oversized evidence before a write", () => {
++		for (const key of ["progress", "next"]) {
++			const data = form();
++			data.set(key, " ");
++			expect(() => progressCommand(card, data)).toThrow();
++		}
++		for (const text of [Array(21).fill("ref").join("\n"), "x".repeat(2001)]) {
++			const data = form();
++			data.set("evidence", text);
++			expect(() => progressCommand(card, data)).toThrow("20 evidence");
++		}
++	});
++	it("keeps latest return visible after newer progress, ordered by version even within one timestamp", () => {
++		const rows = [
++			event(4, "REVIEW", "ACTIVE", "Old return"),
++			event(9, "ACTIVE", "ACTIVE", "New progress"),
++			event(8, "VERIFY", "BLOCKED", "Add account-switch evidence"),
++		];
++		expect(taskUpdates(rows).map((row) => row.version)).toEqual([9, 8, 4]);
++		const html = renderToStaticMarkup(<DeliveryTaskFeedback history={rows} />);
++		expect(html.indexOf("Add account-switch evidence")).toBeLessThan(
++			html.indexOf("<details>"),
++		);
++		expect(html.indexOf("Old return")).toBeGreaterThan(
++			html.indexOf("<details>"),
++		);
++		expect(html).toContain("Reza");
++		expect(html).toContain("Version 8");
++		expect(html).toContain("New progress");
++	});
++	it("handles legacy history and removed actors without HTML injection or false return labels", () => {
++		const row = event(10, "ACTIVE", "BLOCKED", "<script>alert(1)</script>");
++		row.actor = null;
++		expect(
++			taskUpdates([
++				{ ...row, metadata: null },
++				{ ...row, metadata: "legacy" },
++			]),
++		).toEqual([]);
++		const html = renderToStaticMarkup(<DeliveryTaskFeedback history={[row]} />);
++		expect(html).not.toContain("Latest return for rework");
++		expect(html).not.toContain("<script>");
++		expect(html).toContain("&lt;script&gt;");
++		expect(html).toContain("Former member");
++	});
++	it("prepopulates blocker fields and omits viewers from its owner selector", () => {
++		const blocked = {
++			...card,
++			stage: "BLOCKED" as const,
++			blocker: {
++				owner_user_id: "owner",
++				reason: "Missing build",
++				next_action: "Reza assigns build59",
++			},
++		};
++		const html = renderToStaticMarkup(
++			<DeliveryProgressForm
++				card={blocked}
++				people={[
++					{
++						user_id: "owner",
++						role: "OWNER",
++						display_name: "Reza",
++						email: "owner@example.test",
++					},
++					{
++						user_id: "observer",
++						role: "VIEWER",
++						display_name: null,
++						email: "observer@example.test",
++					},
++				]}
++				client={new DeliveryClient("synthetic-personal-key")}
++				run={async () => {}}
++			/>,
++		);
++		expect(html).toContain('value="owner" selected=""');
++		expect(html).toContain("Missing build");
++		expect(html).toContain("Reza assigns build59");
++		expect(html).not.toContain('value="observer"');
++		expect(html).not.toContain('name="stage"');
++	});
++});
+diff --git a/apps/web/src/react-app/delivery-task-updates.ts b/apps/web/src/react-app/delivery-task-updates.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/delivery-task-updates.ts
+@@ -0,0 +1,87 @@
++import type { DeliveryCard, Stage, TaskHistoryEntry } from "./delivery-types";
++
++export function canUpdateProgress(stage: Stage, canWrite: boolean) {
++	return canWrite && ["BACKLOG", "READY", "ACTIVE", "BLOCKED"].includes(stage);
++}
++export function progressCommand(card: DeliveryCard, data: FormData) {
++	if (!canUpdateProgress(card.stage, true))
++		throw new Error(
++			"Return this task to implementation before updating progress.",
++		);
++	const value = (name: string, required = false) => {
++		const text = String(data.get(name) ?? "").trim();
++		if ((required && !text) || text.length > 2000)
++			throw new Error(
++				"Complete the required fields using at most 2000 characters each.",
++			);
++		return text;
++	};
++	const evidence = String(data.get("evidence") ?? "")
++		.split("\n")
++		.map((s) => s.trim())
++		.filter(Boolean);
++	if (evidence.length > 20 || evidence.some((s) => s.length > 2000))
++		throw new Error(
++			"Use at most 20 evidence references, with 2000 characters per reference.",
++		);
++	// Only progress fields: never resend status, assignments or review/verification flags.
++	return {
++		version: card.version,
++		reason: value("progress", true),
++		details: {
++			next_action: value("next", true),
++			evidence,
++			build_ref: value("build"),
++		},
++		...(card.stage === "BLOCKED"
++			? {
++					blocker: {
++						owner_user_id: value("owner", true),
++						reason: value("blocker_reason", true),
++						next_action: value("blocker_next", true),
++					},
++				}
++			: {}),
++	};
++}
++function record(value: unknown): Record<string, unknown> {
++	return value !== null && typeof value === "object" && !Array.isArray(value)
++		? (value as Record<string, unknown>)
++		: {};
++}
++export function taskUpdates(history: TaskHistoryEntry[]) {
++	return history
++		.flatMap((entry) => {
++			const metadata = record(entry.metadata);
++			const from = record(entry.from_value);
++			const to = record(entry.to_value);
++			if (
++				metadata.workflow !== "delivery" ||
++				typeof metadata.reason !== "string" ||
++				!metadata.reason.trim()
++			)
++				return [];
++			const version =
++				typeof to.version === "number" && Number.isSafeInteger(to.version)
++					? to.version
++					: 0;
++			return [
++				{
++					...entry,
++					reason: metadata.reason,
++					version,
++					returned:
++						["REVIEW", "VERIFY"].includes(String(from.stage)) &&
++						["ACTIVE", "BLOCKED", "BACKLOG"].includes(String(to.stage)),
++					from: typeof from.stage === "string" ? from.stage.toLowerCase() : "",
++					to: typeof to.stage === "string" ? to.stage.toLowerCase() : "",
++				},
++			];
++		})
++		.sort(
++			(a, b) =>
++				b.version - a.version ||
++				b.created_at.localeCompare(a.created_at) ||
++				b.id.localeCompare(a.id),
++		);
++}
+diff --git a/apps/web/src/react-app/delivery-types.ts b/apps/web/src/react-app/delivery-types.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/delivery-types.ts
+@@ -0,0 +1,139 @@
++export type Workspace = { id: string; name: string; role: string };
++export type Person = {
++	user_id: string;
++	display_name: string | null;
++	email: string;
++	role: string;
++};
++export type Project = { id: string; name: string };
++export type Task = {
++	id: string;
++	title: string;
++	project_id: string | null;
++	assignee_user_id: string | null;
++	status: string;
++};
++export type Stage =
++	| "BACKLOG"
++	| "READY"
++	| "ACTIVE"
++	| "BLOCKED"
++	| "REVIEW"
++	| "VERIFY"
++	| "DONE"
++	| "ARCHIVED";
++export type DeliveryCard = Task & {
++	version: number;
++	stage: Stage;
++	effective_stage: Stage;
++	reviewer_user_id: string | null;
++	can_start: boolean;
++	readiness_issues: string[];
++	blocker: {
++		owner_user_id: string;
++		reason: string;
++		next_action: string;
++	} | null;
++	depends_on: { id: string; title: string; satisfied: boolean }[];
++	details: {
++		outcome: string;
++		scope: string;
++		next_action: string;
++		repository: string;
++		contract_refs: string[];
++		acceptance_checks: string[];
++		evidence: string[];
++		build_ref: string;
++		source_complete: boolean;
++		deployed: boolean;
++		verification_passed: boolean;
++		device_accepted: boolean;
++		integration_mode: string;
++		exclusions: string[];
++	};
++};
++export type Queue = {
++	active: DeliveryCard[];
++	active_conflict: boolean;
++	ready_alternatives: DeliveryCard[];
++	ready_count: number;
++	missing_ready_alternatives: number;
++	blocked: DeliveryCard[];
++	review: DeliveryCard[];
++	verify: DeliveryCard[];
++};
++export type Settings = {
++	settings: { timezone: string; week_start: number; version: number } | null;
++	access: { user_id: string; can_approve: boolean; can_configure: boolean };
++};
++export type Entry = {
++	id: string;
++	project_id: string;
++	task_id: string;
++	work_date: string;
++	activity: string;
++	minutes: number;
++	note: string;
++	evidence_ref?: string | null;
++};
++export type Week = {
++	id: string;
++	workspace_id: string;
++	user_id: string;
++	week_start_date: string;
++	timezone: string;
++	week_start: number;
++	version: number;
++	revision: number;
++	state: "draft" | "submitted" | "approved" | "changes_requested";
++	entries: Entry[];
++	submission: {
++		at: string;
++		over_cap: boolean;
++		cap_minutes: number | null;
++	} | null;
++	approval: {
++		at: string;
++		actor_user_id: string;
++		reason: string | null;
++		over_cap_decision: string | null;
++		cap_minutes: number | null;
++		entries: {
++			entry_id: string;
++			submitted_minutes: number;
++			approved_minutes: number;
++			amount_minor: number | null;
++			terms: {
++				currency: string | null;
++				minor_unit_scale: number | null;
++			} | null;
++		}[];
++	} | null;
++	payment_status: "manual_unrecorded";
++};
++export type History = {
++	id: string;
++	actor_user_id: string;
++	action: string;
++	reason: string | null;
++	version: number;
++	created_at: string;
++	document: Week;
++};
++export type Page = {
++	pagination: { next_cursor: string | null; has_more: boolean };
++};
++
++export type TaskHistoryEntry = {
++	id: string;
++	actor: {
++		user_id: string;
++		email: string | null;
++		display_name: string | null;
++	} | null;
++	change_type: string;
++	created_at: string;
++	from_value: unknown;
++	to_value: unknown;
++	metadata: unknown;
++};
+diff --git a/apps/web/src/react-app/portfolio-client.test.tsx b/apps/web/src/react-app/portfolio-client.test.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/portfolio-client.test.tsx
+@@ -0,0 +1,43 @@
++import { describe, expect, it } from "vitest";
++import { renderToStaticMarkup } from "react-dom/server";
++import { availabilityCommand } from "./portfolio-client";
++import { PortfolioAvailability } from "./DeliveryPortfolio";
++describe("Personal availability", () => {
++	it("keeps repeated zero days distinct from unset and actual hours", () => {
++		const f = new FormData();
++		f.set("2026-10-19", "0");
++		f.set("2026-10-20", "0");
++		f.set("2026-10-21", "120");
++		expect(
++			availabilityCommand(f, [
++				"2026-10-19",
++				"2026-10-20",
++				"2026-10-21",
++				"2026-10-22",
++			]).map((d) => d.minutes),
++		).toEqual([0, 0, 120, null]);
++	});
++	it.each(["-1", "121", "1.5", "NaN"])(
++		"rejects invalid daily minutes %s",
++		(value) => {
++			const f = new FormData();
++			f.set("day", value);
++			expect(() => availabilityCommand(f, ["day"])).toThrow();
++		},
++	);
++	it("renders zero as a value and unset as a blank without time-approval language", () => {
++		const html = renderToStaticMarkup(
++			<PortfolioAvailability
++				days={[
++					{ date: "2026-10-19", minutes: 0 },
++					{ date: "2026-10-20", minutes: null },
++				]}
++				save={() => {}}
++			/>,
++		);
++		expect(html).toContain('value="0"');
++		expect(html).toContain('value=""');
++		expect(html).toContain("One shared budget");
++		expect(html).toContain("Several zero days are fine");
++	});
++});
+diff --git a/apps/web/src/react-app/portfolio-client.ts b/apps/web/src/react-app/portfolio-client.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/portfolio-client.ts
+@@ -0,0 +1,43 @@
++import type { DeliveryCard } from "./delivery-types";
++export type Portfolio = {
++	version: number;
++	project_ids: string[];
++	focus_task_id: string | null;
++	paused: boolean;
++	resume_note: string;
++	timezone: string;
++	projects: {
++		id: string;
++		name: string;
++		workspace_id: string;
++		workspace_name: string;
++	}[];
++	active_priority: (DeliveryCard & { workspace_id: string }) | null;
++	other_active: (DeliveryCard & { workspace_id: string })[];
++	active_conflict: boolean;
++	ready_alternatives: (DeliveryCard & { workspace_id: string })[];
++	blocked: (DeliveryCard & { workspace_id: string })[];
++	review: DeliveryCard[];
++	verify: DeliveryCard[];
++	availability: { date: string; minutes: number | null }[];
++	progress: {
++		id: string;
++		task_id: string;
++		title: string;
++		date: string;
++		reason: string;
++		stage: string | null;
++	}[];
++};
++export function availabilityCommand(data: FormData, dates: string[]) {
++	return dates.map((date) => {
++		const raw = String(data.get(date) ?? "").trim();
++		const minutes = raw === "" ? null : Number(raw);
++		if (
++			minutes !== null &&
++			(!Number.isInteger(minutes) || minutes < 0 || minutes > 120)
++		)
++			throw new Error("Use whole minutes from 0 to 120, or leave a day unset.");
++		return { date, minutes };
++	});
++}
+diff --git a/apps/web/src/react-app/use-delivery-resource.ts b/apps/web/src/react-app/use-delivery-resource.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/react-app/use-delivery-resource.ts
+@@ -0,0 +1,36 @@
++import { useEffect, useState } from "react";
++export function useDeliveryResource<T>(
++	load: () => Promise<T>,
++	identity: string,
++	keepPrevious = false,
++) {
++	const [result, setResult] = useState<{
++		identity: string;
++		data?: T;
++		error?: string;
++	}>({ identity: "" });
++	useEffect(() => {
++		let current = true;
++		void load().then(
++			(data) => {
++				if (current) setResult({ identity, data });
++			},
++			(error: unknown) => {
++				if (current)
++					setResult({
++						identity,
++						error:
++							error instanceof Error
++								? error.message
++								: "Could not load Delivery.",
++					});
++			},
++		);
++		return () => {
++			current = false;
++		};
++	}, [identity, load]);
++	return result.identity === identity
++		? { ...result, loading: false }
++		: { identity, data: keepPrevious ? result.data : undefined, loading: true };
++}
+diff --git a/apps/web/src/worker/delivery-proxy.ts b/apps/web/src/worker/delivery-proxy.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/worker/delivery-proxy.ts
+@@ -0,0 +1,193 @@
++import { z } from "zod";
++
++// The destination is operator configuration, never a caller-supplied URL.
++export interface DeliveryBindings {
++	TODOLESS_API_ORIGIN?: string;
++	BETTER_AUTH_URL: string;
++}
++const identifier = "[A-Za-z0-9_-]{1,200}";
++const workspace = `/v1/workspaces/${identifier}`;
++const week = `${workspace}/time/weeks/${identifier}`;
++const allowedReads = new RegExp(
++	`^(?:/v1/me(?:/portfolio)?|/v1/workspaces|${workspace}/(?:projects|members|tasks|delivery/queue|time/(?:settings|weeks|report|export\\.csv))|${week}(?:/history)?|/v1/tasks/${identifier}/(?:delivery|history))$`,
++);
++const allowedWrites = {
++	POST: new RegExp(`^(?:${workspace}/time/weeks|${week}/actions)$`),
++	PUT: new RegExp(`^(?:/v1/tasks/${identifier}/delivery|/v1/me/portfolio)$`),
++};
++const envelopeSchema = z
++	.object({
++		method: z.enum(["GET", "POST", "PUT"]),
++		path: z.string().max(3000),
++		body: z.record(z.string(), z.unknown()).optional(),
++		idempotency_key: z
++			.string()
++			.regex(/^[A-Za-z0-9_.:-]{8,120}$/)
++			.optional(),
++	})
++	.strict();
++function fail(status: number, code: string, message: string) {
++	return Response.json(
++		{ success: false, error: { code, message } },
++		{ status, headers: { "cache-control": "no-store" } },
++	);
++}
++export async function forwardDelivery(
++	request: Request,
++	bindings: DeliveryBindings,
++	send: typeof fetch = fetch,
++): Promise<Response> {
++	const origin = request.headers.get("origin");
++	// Even reads use POST and carry a key. Do not allow cross-origin browser use.
++	if (
++		origin !== new URL(bindings.BETTER_AUTH_URL).origin ||
++		request.headers.get("sec-fetch-site") === "cross-site"
++	)
++		return fail(
++			403,
++			"FORBIDDEN",
++			"Open Delivery from the signed-in HopKit app.",
++		);
++	if (!bindings.TODOLESS_API_ORIGIN)
++		return fail(
++			503,
++			"DELIVERY_NOT_CONFIGURED",
++			"Delivery is not connected to Todoless in this environment yet.",
++		);
++	let target: URL;
++	try {
++		target = new URL(bindings.TODOLESS_API_ORIGIN);
++		const loopback = (u: URL) =>
++			["127.0.0.1", "localhost", "[::1]"].includes(u.hostname);
++		if (
++			target.username ||
++			target.password ||
++			target.search ||
++			target.hash ||
++			target.pathname !== "/" ||
++			(target.protocol !== "https:" &&
++				!(
++					target.protocol === "http:" &&
++					loopback(target) &&
++					loopback(new URL(bindings.BETTER_AUTH_URL))
++				))
++		)
++			throw new Error();
++	} catch {
++		return fail(
++			503,
++			"DELIVERY_NOT_CONFIGURED",
++			"The Todoless connection needs operator configuration.",
++		);
++	}
++	if (
++		!request.headers
++			.get("content-type")
++			?.toLowerCase()
++			.startsWith("application/json")
++	)
++		return fail(415, "INVALID_CONTENT_TYPE", "Use application/json.");
++	const key = request.headers.get("x-todoless-key") ?? "";
++	if (!/^[A-Za-z0-9_-]{16,512}$/.test(key))
++		return fail(401, "KEY_REQUIRED", "Enter your personal Todoless key.");
++	let raw: unknown;
++	try {
++		raw = await request.json();
++	} catch {
++		return fail(400, "INVALID_JSON", "Invalid request body.");
++	}
++	const parsed = envelopeSchema.safeParse(raw);
++	if (!parsed.success)
++		return fail(400, "BAD_REQUEST", "Invalid delivery request.");
++	const { method, path, body, idempotency_key } = parsed.data;
++	const [pathname, query = ""] = path.split("?");
++	if (
++		path.split("?").length > 2 ||
++		pathname.includes("%") ||
++		(method === "GET"
++			? !allowedReads.test(pathname) ||
++				body !== undefined ||
++				idempotency_key !== undefined
++			: !allowedWrites[method].test(pathname) || !body || !idempotency_key)
++	)
++		return fail(
++			400,
++			"BAD_REQUEST",
++			"This operation is not available in Delivery.",
++		);
++	const params = new URLSearchParams(query);
++	const allowedParams = new Set(
++		pathname === "/v1/me/portfolio"
++			? ["week_start_date"]
++			: pathname.endsWith("/history")
++				? ["limit", "cursor"]
++				: [
++						"from",
++						"to",
++						"user_id",
++						"limit",
++						"cursor",
++						"project_id",
++						"assignee_id",
++					],
++	);
++	for (const [name, value] of params) {
++		if (
++			method !== "GET" ||
++			!allowedParams.has(name) ||
++			params.getAll(name).length !== 1 ||
++			value.length > 1000
++		)
++			return fail(400, "BAD_REQUEST", "Invalid delivery query.");
++	}
++	const headers = new Headers({
++		authorization: `Bearer ${key}`,
++		accept: "application/json",
++	});
++	if (method !== "GET") {
++		headers.set("content-type", "application/json");
++		headers.set("idempotency-key", idempotency_key!);
++	}
++	try {
++		const upstream = await send(new URL(path, target), {
++			method,
++			headers,
++			body: body === undefined ? undefined : JSON.stringify(body),
++			redirect: "manual",
++			signal: AbortSignal.timeout(20_000),
++		});
++		// Never forward redirects, cookies, authorization headers or upstream HTML.
++		const csv = pathname.endsWith("/export.csv") && upstream.ok;
++		const expected = csv ? "text/csv" : "application/json";
++		if (
++			(upstream.status >= 300 && upstream.status < 400) ||
++			!upstream.headers.get("content-type")?.includes(expected)
++		)
++			return fail(
++				502,
++				"DELIVERY_UNAVAILABLE",
++				"Todoless returned an unexpected response. Retry the same action.",
++			);
++		return new Response(upstream.body, {
++			status: upstream.status,
++			headers: {
++				"content-type": csv
++					? "text/csv; charset=utf-8"
++					: "application/json; charset=utf-8",
++				"cache-control": "no-store",
++				"x-content-type-options": "nosniff",
++				...(csv
++					? {
++							"content-disposition": 'attachment; filename="todoless-time.csv"',
++						}
++					: {}),
++			},
++		});
++	} catch {
++		return fail(
++			502,
++			"DELIVERY_UNAVAILABLE",
++			"Could not reach Todoless. Retry the same action before making another change.",
++		);
++	}
++}
+diff --git a/apps/web/src/worker/delivery-routes.ts b/apps/web/src/worker/delivery-routes.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/worker/delivery-routes.ts
+@@ -0,0 +1,24 @@
++import { Hono } from "hono";
++import { bodyLimit } from "hono/body-limit";
++import { requireSession, type WorkerAppEnv } from "./session-middleware";
++import { forwardDelivery } from "./delivery-proxy";
++
++export const deliveryRoutes = new Hono<WorkerAppEnv>();
++deliveryRoutes.post(
++	"/delivery/request",
++	requireSession,
++	bodyLimit({
++		maxSize: 64 * 1024,
++		onError: (c) =>
++			c.json(
++				{
++					error: {
++						code: "BODY_TOO_LARGE",
++						message: "Delivery request too large.",
++					},
++				},
++				413,
++			),
++	}),
++	(c) => forwardDelivery(c.req.raw, c.env),
++);
+diff --git a/apps/web/src/worker/index.ts b/apps/web/src/worker/index.ts
+--- a/apps/web/src/worker/index.ts
++++ b/apps/web/src/worker/index.ts
+@@ -1,4 +1,5 @@
+ import { Hono } from "hono";
++import { deliveryRoutes } from "./delivery-routes";
+ import { bodyLimit } from "hono/body-limit";
+ import { HTTPException } from "hono/http-exception";
+ 
+@@ -115,6 +116,7 @@
+ });
+ 
+ const apiRoutes = new Hono<WorkerAppEnv>()
++	.route("/", deliveryRoutes)
+ 	.route("/", localCodexRoutes)
+ 	.route("/", mcpRoutes)
+ 	.route("/", collaborationExperienceRoutes)
+diff --git a/apps/web/test/delivery-proxy.test.ts b/apps/web/test/delivery-proxy.test.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/test/delivery-proxy.test.ts
+@@ -0,0 +1,331 @@
++import { env, exports } from "cloudflare:workers";
++import { describe, expect, it, vi } from "vitest";
++import { forwardDelivery } from "../src/worker/delivery-proxy";
++const bindings = {
++	BETTER_AUTH_URL: "https://hopkit.example",
++	TODOLESS_API_ORIGIN: "https://tasks.example",
++};
++function request(
++	body: unknown = { method: "GET", path: "/v1/me" },
++	headers: Record<string, string> = {},
++) {
++	return new Request("https://hopkit.example/api/delivery/request", {
++		method: "POST",
++		headers: {
++			origin: bindings.BETTER_AUTH_URL,
++			"content-type": "application/json",
++			"x-todoless-key": "synthetic-personal-key",
++			...headers,
++		},
++		body: JSON.stringify(body),
++	});
++}
++describe("Delivery proxy boundary", () => {
++	it("allows only own portfolio reads/writes and the weekly query", async () => {
++		const send = vi.fn<typeof fetch>(async () =>
++			Response.json({ success: true, data: { version: 1 } }),
++		);
++		expect(
++			(
++				await forwardDelivery(
++					request({
++						method: "GET",
++						path: "/v1/me/portfolio?week_start_date=2026-10-19",
++					}),
++					bindings,
++					send,
++				)
++			).status,
++		).toBe(200);
++		expect(
++			(
++				await forwardDelivery(
++					request({
++						method: "PUT",
++						path: "/v1/me/portfolio",
++						body: {
++							version: 0,
++							availability: [{ date: "2026-10-19", minutes: 0 }],
++						},
++						idempotency_key: "portfolio-123",
++					}),
++					bindings,
++					send,
++				)
++			).status,
++		).toBe(200);
++		expect(
++			new Headers(send.mock.calls[1][1]?.headers).get("idempotency-key"),
++		).toBe("portfolio-123");
++		send.mockClear();
++		for (const body of [
++			{ method: "GET", path: "/v1/me/portfolio?user_id=other" },
++			{
++				method: "GET",
++				path: "/v1/me/portfolio?week_start_date=a&week_start_date=b",
++			},
++			{ method: "GET", path: "/v1/users/other/portfolio" },
++			{
++				method: "POST",
++				path: "/v1/me/portfolio",
++				body: {},
++				idempotency_key: "portfolio-123",
++			},
++		])
++			expect(
++				(await forwardDelivery(request(body), bindings, send)).status,
++			).toBe(400);
++		expect(send).not.toHaveBeenCalled();
++	});
++
++	it("allows only paginated history reads and preserves task authorization denials", async () => {
++		const send = vi.fn<typeof fetch>(async () =>
++			Response.json(
++				{ success: false, error: { code: "FORBIDDEN" } },
++				{ status: 403 },
++			),
++		);
++		const response = await forwardDelivery(
++			request({
++				method: "GET",
++				path: "/v1/tasks/task/history?limit=100&cursor=next",
++			}),
++			bindings,
++			send,
++		);
++		expect(response.status).toBe(403);
++		expect(String(send.mock.calls[0][0])).toBe(
++			"https://tasks.example/v1/tasks/task/history?limit=100&cursor=next",
++		);
++		expect(
++			new Headers(send.mock.calls[0][1]!.headers).get("authorization"),
++		).toBe("Bearer synthetic-personal-key");
++		send.mockClear();
++		for (const body of [
++			{ method: "GET", path: "/v1/tasks/task/history?user_id=other" },
++			{ method: "GET", path: "/v1/tasks/task/history?limit=1&limit=100" },
++			{ method: "GET", path: "/v1/tasks/task/history/extra" },
++			{
++				method: "PUT",
++				path: "/v1/tasks/task/history",
++				body: {},
++				idempotency_key: "test-key-123",
++			},
++			{
++				method: "POST",
++				path: "/v1/tasks/task/history",
++				body: {},
++				idempotency_key: "test-key-123",
++			},
++		])
++			expect(
++				(await forwardDelivery(request(body), bindings, send)).status,
++			).toBe(400);
++		expect(send).not.toHaveBeenCalled();
++	});
++
++	it("requires an actual HopKit session on the registered route", async () => {
++		const response = await exports.default.fetch(request());
++		expect(response.status).toBe(401);
++		expect(response.headers.get("cache-control")).toBe("no-store");
++	});
++	it("keeps the integration disabled even for a signed-in session until configured", async () => {
++		const now = Date.now();
++		const user = "delivery-session-user";
++		const token = "delivery-session-token";
++		await env.DB.batch([
++			env.DB.prepare(
++				"insert into user (id,name,email,email_verified) values (?,?,?,?)",
++			).bind(user, "Pilot", "pilot@example.test", 1),
++			env.DB.prepare(
++				"insert into session (id,expires_at,token,updated_at,user_id) values (?,?,?,?,?)",
++			).bind("delivery-session", now + 3600000, token, now, user),
++		]);
++		try {
++			const key = await crypto.subtle.importKey(
++				"raw",
++				new TextEncoder().encode(
++					"task-3-test-secret-with-at-least-32-characters",
++				),
++				{ name: "HMAC", hash: "SHA-256" },
++				false,
++				["sign"],
++			);
++			const signature = btoa(
++				String.fromCharCode(
++					...new Uint8Array(
++						await crypto.subtle.sign(
++							"HMAC",
++							key,
++							new TextEncoder().encode(token),
++						),
++					),
++				),
++			);
++			const response = await exports.default.fetch(
++				new Request("http://example.com/api/delivery/request", {
++					method: "POST",
++					headers: {
++						cookie: `better-auth.session_token=${token}.${signature}`,
++						origin: "http://example.com",
++						"content-type": "application/json",
++					},
++					body: JSON.stringify({ method: "GET", path: "/v1/me" }),
++				}),
++			);
++			expect(response.status).toBe(503);
++			expect(await response.text()).toContain("DELIVERY_NOT_CONFIGURED");
++		} finally {
++			await env.DB.prepare("delete from user where id=?").bind(user).run();
++		}
++	});
++	it("rejects cross-origin, unsupported and credential-management requests before fetch", async () => {
++		const send = vi.fn<typeof fetch>();
++		expect(
++			(
++				await forwardDelivery(
++					request(undefined, { origin: "https://evil.example" }),
++					bindings,
++					send,
++				)
++			).status,
++		).toBe(403);
++		expect(
++			(
++				await forwardDelivery(
++					request(undefined, { origin: "" }),
++					bindings,
++					send,
++				)
++			).status,
++		).toBe(403);
++		for (const path of [
++			"https://evil.example/v1/me",
++			"//evil.example/v1/me",
++			"/v1/%6de",
++			"/v1/workspaces/ws/api-keys",
++			"/v1/workspaces/ws/time/settings?foo=bar",
++			"/v1/tasks/task/../api-keys",
++		])
++			expect(
++				(
++					await forwardDelivery(
++						request({ method: "GET", path }),
++						bindings,
++						send,
++					)
++				).status,
++			).toBe(400);
++		for (const path of [
++			"/v1/workspaces/ws/time/settings",
++			"/v1/workspaces/ws/time/terms",
++			"/v1/workspaces/ws/time/approvers/usr",
++			"/v1/workspaces/ws/members",
++		])
++			expect(
++				(
++					await forwardDelivery(
++						request({
++							method: "PUT",
++							path,
++							body: {},
++							idempotency_key: "test-key-123",
++						}),
++						bindings,
++						send,
++					)
++				).status,
++			).toBe(400);
++		expect(send).not.toHaveBeenCalled();
++	});
++	it("only forwards the supplied personal key and exact mutation receipt", async () => {
++		const send = vi.fn<typeof fetch>(async () =>
++			Response.json(
++				{ success: true, data: { version: 2 } },
++				{ headers: { "set-cookie": "evil=1", "x-upstream-private": "secret" } },
++			),
++		);
++		const response = await forwardDelivery(
++			request(
++				{
++					method: "POST",
++					path: "/v1/workspaces/ws/time/weeks/week/actions",
++					body: { action: "submit", version: 1, confirmed_human_time: true },
++					idempotency_key: "stable-test-key",
++				},
++				{ cookie: "hopkit-session", authorization: "not-forwarded" },
++			),
++			bindings,
++			send,
++		);
++		expect(response.status).toBe(200);
++		expect(response.headers.get("set-cookie")).toBeNull();
++		expect(response.headers.get("x-upstream-private")).toBeNull();
++		expect(response.headers.get("cache-control")).toBe("no-store");
++		const [url, init] = send.mock.calls[0];
++		expect(String(url)).toBe(
++			"https://tasks.example/v1/workspaces/ws/time/weeks/week/actions",
++		);
++		const headers = new Headers(init!.headers);
++		expect(headers.get("authorization")).toBe("Bearer synthetic-personal-key");
++		expect(headers.get("cookie")).toBeNull();
++		expect(headers.get("idempotency-key")).toBe("stable-test-key");
++		expect(init!.redirect).toBe("manual");
++	});
++	it("never follows redirects, relays HTML or uses an unsafe configured destination", async () => {
++		for (const response of [
++			new Response(null, {
++				status: 302,
++				headers: { location: "https://evil.example" },
++			}),
++			new Response("<script>bad</script>", {
++				headers: { "content-type": "text/html" },
++			}),
++		]) {
++			const send = vi.fn<typeof fetch>(async () => response);
++			expect((await forwardDelivery(request(), bindings, send)).status).toBe(
++				502,
++			);
++			expect(send).toHaveBeenCalledTimes(1);
++		}
++		const send = vi.fn<typeof fetch>();
++		for (const origin of [
++			"http://tasks.example",
++			"http://127.0.0.1",
++			"https://key:secret@tasks.example",
++			"https://tasks.example/path",
++		])
++			expect(
++				(
++					await forwardDelivery(
++						request(),
++						{ ...bindings, TODOLESS_API_ORIGIN: origin },
++						send,
++					)
++				).status,
++			).toBe(503);
++		expect(send).not.toHaveBeenCalled();
++	});
++	it("preserves backend denials and CSV without converting them to successful writes", async () => {
++		const denied = await forwardDelivery(request(), bindings, async () =>
++			Response.json(
++				{ success: false, error: { code: "FORBIDDEN" } },
++				{ status: 403 },
++			),
++		);
++		expect(denied.status).toBe(403);
++		const csv = await forwardDelivery(
++			request({
++				method: "GET",
++				path: "/v1/workspaces/ws/time/export.csv?from=2026-10-19&to=2026-10-19",
++			}),
++			bindings,
++			async () =>
++				new Response("submitted,approved\n90,60", {
++					headers: { "content-type": "text/csv" },
++				}),
++		);
++		expect(await csv.text()).toBe("submitted,approved\n90,60");
++		expect(csv.headers.get("content-disposition")).toContain("attachment");
++	});
++});

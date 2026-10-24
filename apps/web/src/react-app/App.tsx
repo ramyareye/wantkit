@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { LandingPage } from "./LandingPage";
 import { InvitationPage } from "./InvitationPage";
 import { ThemeSwitch } from "./ThemeSwitch";
@@ -15,6 +15,8 @@ import { BrandMark, LocaleSwitch } from "./ui";
 import "./App.css";
 import "./Dashboard.css";
 import "./ConceptMedia.css";
+
+const DeliveryPage = lazy(() => import("./DeliveryPage").then((module) => ({ default: module.DeliveryPage })));
 
 function GoogleIcon() {
 	return (
@@ -69,7 +71,7 @@ function SignedOutScreen({ sessionError, landing = false }: { sessionError: bool
 		try {
 			const result = await authClient.signIn.social({
 				provider: "google",
-				callbackURL: `${window.location.origin}${/^\/connectors\/actions\/[A-Za-z0-9_-]+$/.test(window.location.pathname) ? window.location.pathname : window.location.pathname.startsWith("/connectors") ? "/connectors" : "/"}`,
+				callbackURL: `${window.location.origin}${/^\/connectors\/actions\/[A-Za-z0-9_-]+$/.test(window.location.pathname) ? window.location.pathname : window.location.pathname.startsWith("/connectors") ? "/connectors" : /^\/delivery\/?$/.test(window.location.pathname) ? "/delivery" : "/"}`,
 			});
 
 			if (result.error) {
@@ -210,6 +212,8 @@ function App() {
 		return <SignedOutScreen sessionError={Boolean(error)} landing={window.location.pathname === "/"} />;
 	}
 
+	if (/^\/delivery\/?$/.test(window.location.pathname))
+		return <Suspense fallback={<LoadingScreen />}><DeliveryPage key={session.session.id} email={session.user.email} /></Suspense>;
 	if (window.location.pathname.startsWith("/connectors/actions/"))
 		return <AssistantActionPage />;
 	if (window.location.pathname.startsWith("/connectors"))

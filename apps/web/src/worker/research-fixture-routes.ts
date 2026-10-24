@@ -7,13 +7,13 @@ const productFixture = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="robots" content="noindex,nofollow">
-  <title>Warm oak paper lamp · WantKit fixture</title>
+  <title>Warm oak paper lamp · HopKit fixture</title>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": "Warm oak paper lamp",
-    "brand": { "@type": "Brand", "name": "WantKit Fixtures" },
+    "brand": { "@type": "Brand", "name": "HopKit Fixtures" },
     "model": "WOPL-01",
     "category": "Floor lamp",
     "offers": {
@@ -21,7 +21,7 @@ const productFixture = `<!doctype html>
       "price": "79.99",
       "priceCurrency": "EUR",
       "availability": "https://schema.org/InStock",
-      "seller": { "@type": "Organization", "name": "WantKit Demo Store" }
+      "seller": { "@type": "Organization", "name": "HopKit Demo Store" }
     }
   }
   </script>
