@@ -15,6 +15,7 @@ import {
 	progressCommand,
 	taskUpdates,
 } from "../src/react-app/delivery-task-updates";
+import { loadTaskQueue } from "../src/react-app/delivery-queue";
 import type {
 	DeliveryCard,
 	TaskHistoryEntry,
@@ -384,6 +385,17 @@ try {
 			});
 		const contributor = clientFor(member.key),
 			reviewer = clientFor(owner.key);
+		const completeQueue = await loadTaskQueue(
+			contributor,
+			owner.workspace,
+			member.id,
+		);
+		assert.equal(completeQueue.ready_count, 3);
+		assert.equal(
+			completeQueue.ready_alternatives.length,
+			3,
+			"Task list retains every ready task through the bounded proxy",
+		);
 		const path = `/v1/tasks/${pairs[0].task.id}/delivery`;
 		const historyPath = `/v1/tasks/${pairs[0].task.id}/history`;
 		let card = await contributor.get<DeliveryCard>(path);
@@ -623,14 +635,13 @@ try {
 		page.on("pageerror", (error: Error) => errors.push(error.message));
 		await page.goto(server.url.href);
 		async function connect(key: string) {
-			if (
-				await page
-					.getByRole("button", { name: "Disconnect & clear key" })
-					.count()
-			)
+			if (await page.locator(".delivery-account").count()) {
+				const closedAccount = page.locator(".delivery-account:not([open]) summary");
+				if (await closedAccount.count()) await closedAccount.click();
 				await page
 					.getByRole("button", { name: "Disconnect & clear key" })
 					.click();
+			}
 			await page.getByLabel("Personal Todoless key").fill(key);
 			await page
 				.getByRole("button", { name: "Connect Todoless", exact: true })
@@ -643,14 +654,12 @@ try {
 				console.error("Connect UI:", await page.locator("main").innerText());
 				throw error;
 			}
-			await page
-				.getByRole("heading", { name: "One thing in motion." })
-				.waitFor();
+			await page.getByRole("heading", { name: "Tasks", exact: true }).waitFor();
 		}
 		async function viewHours(team = false) {
 			await page
 				.getByRole("button", {
-					name: team ? "Weekly approval" : "My hours",
+					name: team ? "Reviews" : "My time",
 					exact: true,
 				})
 				.click();
@@ -661,7 +670,10 @@ try {
 		);
 		await mkdir(output, { recursive: true });
 		await connect(member.key);
-		await page.getByText("Two alternatives are ready.").waitFor();
+		await page
+			.locator(".delivery-task-row")
+			.filter({ hasText: "Grow device acceptance" })
+			.waitFor();
 		await page.screenshot({
 			path: `${output}/queue-desktop.png`,
 			fullPage: true,
@@ -672,11 +684,10 @@ try {
 				exact: true,
 			}),
 		});
-		await grow.getByRole("button", { name: "Update status" }).click();
-		await grow.getByLabel("Move to").selectOption("ACTIVE");
-		await grow
-			.getByLabel("Reason", { exact: true })
-			.fill("Starting the fixture task");
+		await page
+			.locator(".delivery-task-row")
+			.filter({ hasText: "Grow device acceptance" })
+			.click();
 
 		await api(
 			"PUT",
@@ -688,25 +699,30 @@ try {
 			},
 			owner.key,
 		);
-		await grow.getByRole("button", { name: "Save status" }).click();
+		await grow.getByRole("button", { name: "Start task", exact: true }).click();
 		await page
 			.getByRole("alert")
 			.filter({
-				hasText: "Refresh current records before making another change.",
+				hasText: "Close this task to refresh or retry the action.",
 			})
 			.waitFor();
 		assert.equal(
-			await grow.getByRole("button", { name: "Save status" }).isDisabled(),
+			await grow
+				.getByRole("button", { name: "Start task", exact: true })
+				.isDisabled(),
 			true,
 		);
-		await page.getByRole("button", { name: "Refresh current records" }).click();
-		await grow.getByRole("button", { name: "Update status" }).click();
-		await grow.getByLabel("Move to").selectOption("ACTIVE");
+		await page.getByRole("button", { name: "Close task" }).click();
+		await page.getByRole("button", { name: "Refresh", exact: true }).click();
+		await page
+			.locator(".delivery-task-row")
+			.filter({ hasText: "Grow device acceptance" })
+			.click();
+		await grow.getByRole("button", { name: "Start task", exact: true }).click();
 		await grow
-			.getByLabel("Reason", { exact: true })
-			.fill("Starting after reloading the correction");
-		await grow.getByRole("button", { name: "Save status" }).click();
-		await page.getByText("Saved in Todoless.").waitFor();
+			.getByRole("button", { name: "Send for review", exact: true })
+			.waitFor();
+
 		assert.equal(
 			(
 				await api(
@@ -718,19 +734,22 @@ try {
 			).active.length,
 			1,
 		);
-		await grow.getByRole("button", { name: "Update status" }).click();
-		await grow.getByLabel("Move to").selectOption("REVIEW");
 		await grow
-			.getByLabel("Reason", { exact: true })
+			.getByRole("button", { name: "Send for review", exact: true })
+			.click();
+		await grow
+			.getByLabel("What is ready to review?", { exact: true })
 			.fill("Source ready for review");
 		await grow
 			.getByLabel("Evidence references (one per line)")
 			.fill("docs/device-qa.md");
-		await grow.getByLabel("Source is complete and ready for review").check();
-		await grow.getByRole("button", { name: "Save status" }).click();
-		await page
-			.getByText("Source ready for review", { exact: true })
-			.waitFor({ state: "hidden" });
+		await grow.getByLabel("This work is ready for review").check();
+		await grow
+			.getByRole("button", { name: "Send for review", exact: true })
+			.click();
+		await grow.getByText("Waiting for", { exact: false }).waitFor();
+		await page.getByRole("button", { name: "Close task" }).click();
+
 		await viewHours();
 		await page.getByRole("button", { name: "Start this week" }).click();
 		for (const [index, pair] of pairs.slice(0, 2).entries()) {
@@ -884,6 +903,7 @@ try {
 			await page.getByLabel("Week starting").inputValue(),
 			"2026-10-19",
 		);
+		await page.getByText("Ready to submit this week?", { exact: true }).click();
 		await page
 			.getByLabel("I confirm these entries are actual human time worked.")
 			.check();
@@ -901,17 +921,27 @@ try {
 		);
 		await connect(owner.key);
 		await page.getByLabel("Queue for", { exact: true }).selectOption(member.id);
-		await grow.getByRole("button", { name: "Update status" }).click();
-		await grow.getByLabel("Move to").selectOption("VERIFY");
-		await grow.getByLabel("Reason", { exact: true }).fill("Review passed");
-		await grow.getByRole("button", { name: "Save status" }).click();
-		await grow.getByRole("button", { name: "Update status" }).click();
-		await grow.getByLabel("Move to").selectOption("DONE");
+		await page
+			.locator(".delivery-task-row")
+			.filter({ hasText: "Grow device acceptance" })
+			.click();
 		await grow
-			.getByLabel("Reason", { exact: true })
+			.getByRole("button", { name: "Accept review", exact: true })
+			.click();
+		await grow.getByLabel("Note", { exact: true }).fill("Review passed");
+		await grow
+			.getByRole("button", { name: "Accept review", exact: true })
+			.click();
+		await grow
+			.getByRole("button", { name: "Mark complete", exact: true })
+			.click();
+		await grow
+			.getByLabel("Note", { exact: true })
 			.fill("Device check passed locally");
 		await grow.getByLabel("Acceptance checks passed").check();
-		await grow.getByRole("button", { name: "Save status" }).click();
+		await grow
+			.getByRole("button", { name: "Mark complete", exact: true })
+			.click();
 		await grow.waitFor({ state: "hidden" });
 		const completed = await api(
 			"GET",
@@ -939,6 +969,7 @@ try {
 			.getByLabel("Reason (required", { exact: false })
 			.fill("Clarified device QA");
 		await page.getByRole("button", { name: "Create revision" }).click();
+		await page.getByText("Ready to submit this week?", { exact: true }).click();
 		await page
 			.getByLabel("I confirm these entries are actual human time worked.")
 			.check();
@@ -1024,9 +1055,13 @@ try {
 			stored.includes(member.key) || stored.includes(owner.key),
 			false,
 		);
+		const closedAccount = page.locator(".delivery-account:not([open]) summary");
+		if (await closedAccount.count()) await closedAccount.click();
 		await page.getByRole("button", { name: "Disconnect & clear key" }).click();
 		await page.reload();
-		await page.getByRole("heading", { name: "Connect your work." }).waitFor();
+		await page
+			.getByRole("heading", { name: "Connect with Todoless" })
+			.waitFor();
 		assert.deepEqual(errors, []);
 		console.log(
 			"PASS: actual task start/review/verify/done; stale-version reload; Grow + Veloura human entries; submission; no self-approval UI; lost-response exact retry without duplicate time; return/revise; adjusted approval; CSV; desktop/mobile; no persistent keys. Synthetic local data only.",

@@ -10,7 +10,7 @@ import "../src/react-app/App.css";
 export function DemoGuide() {
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState(
-		"Start as contributor to try the queue and hours. Then switch to owner to review the submitted week.",
+		"Try a task as contributor; switch to owner to review.",
 	);
 	async function connect(role: "contributor" | "owner") {
 		setBusy(true);
@@ -77,18 +77,20 @@ export function DemoGuide() {
 			aria-label="Local demo controls"
 			style={{
 				maxWidth: 1160,
-				margin: "20px auto 0",
-				padding: 20,
-				border: "2px solid var(--warning-line)",
+				margin: "12px auto 0",
+				padding: "12px 20px",
+				display: "flex",
+				alignItems: "center",
+				flexWrap: "wrap",
+				gap: 16,
+				fontSize: 12,
+				border: "1px solid var(--warning-line)",
 				background: "var(--warning-wash)",
 				color: "var(--ink)",
 			}}
 		>
 			<strong>LOCAL DEMO · Fictional data only</strong>
-			<p>
-				No Google login or real API key needed. Data resets when this server
-				stops.
-			</p>
+
 			<div className="delivery-actions">
 				<button
 					className="button button--primary"
@@ -105,21 +107,25 @@ export function DemoGuide() {
 					Use owner
 				</button>
 			</div>
-			<p role="status">{busy ? "Switching demo identity..." : message}</p>
 			<details>
-				<summary>What to try</summary>
+				<summary>About this demo</summary>
+				<p>
+					No login or real API key needed. All data resets when this server
+					stops.
+				</p>
+				<p role="status">{busy ? "Switching demo identity..." : message}</p>
 				<ol>
 					<li>
-						Task queue: inspect the active task, two ready alternatives and
+						Tasks: open a row to inspect the active task, ready alternatives and
 						Grow's blocked task. Its owner, reason, next action and dependency
 						are recorded.
 					</li>
 					<li>
-						My hours: add or edit time across Grow and Veloura, confirm it is
+						My time: add or edit time across Grow and Veloura, confirm it is
 						human time, then submit the week.
 					</li>
 					<li>
-						Use owner: open Weekly approval to approve or return the developer's
+						Use owner: open Reviews to approve or return the developer's
 						submission with a reason. The owner cannot approve their own hours.
 					</li>
 					<li>

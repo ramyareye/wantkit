@@ -63,7 +63,7 @@ function WorkspaceDelivery({
 		try {
 			await action();
 			setRefresh((n) => n + 1);
-			setNotice("Saved in Todoless.");
+			setNotice("Saved.");
 		} catch (e) {
 			setError(
 				e instanceof Error ? e.message : "The action could not be completed.",
@@ -88,21 +88,21 @@ function WorkspaceDelivery({
 						disabled={busy || client.needsRetry}
 						onClick={() => setTab("queue")}
 					>
-						Task queue
+						Tasks
 					</button>
 					<button
 						aria-current={tab === "hours" ? "page" : undefined}
 						disabled={busy || client.needsRetry}
 						onClick={() => setTab("hours")}
 					>
-						My hours
+						My time
 					</button>
 					<button
 						aria-current={tab === "portfolio" ? "page" : undefined}
 						disabled={busy || client.needsRetry}
 						onClick={() => setTab("portfolio")}
 					>
-						Personal portfolio
+						Workload
 					</button>
 					{result.data?.settings.access.can_approve && (
 						<button
@@ -110,7 +110,7 @@ function WorkspaceDelivery({
 							disabled={busy || client.needsRetry}
 							onClick={() => setTab("approval")}
 						>
-							Weekly approval
+							Reviews
 						</button>
 					)}
 				</nav>
@@ -125,15 +125,13 @@ function WorkspaceDelivery({
 						setRefresh((n) => n + 1);
 					}}
 				>
-					Refresh current records
+					Refresh
 				</button>
 			</div>
 			{error && (
 				<p className="delivery-notice" role="alert">
 					{error}
-					{stale
-						? " Refresh current records before making another change."
-						: ""}
+					{stale ? " Refresh before making another change." : ""}
 				</p>
 			)}
 			{client.needsRetry && !busy && (
@@ -151,7 +149,7 @@ function WorkspaceDelivery({
 					</button>
 				</div>
 			)}
-			<p role="status" className="delivery-muted">
+			<p role="status" className="delivery-save-status">
 				{busy ? "Saving..." : notice}
 			</p>
 			{result.error ? (
@@ -181,6 +179,8 @@ function WorkspaceDelivery({
 						/>
 					) : tab === "queue" ? (
 						<DeliveryQueue
+							locked={busy || stale || client.needsRetry || result.loading}
+							errorMessage={error}
 							{...result.data}
 							{...{ client, workspace, refresh, canWrite, run }}
 							userId={user.id}
@@ -236,16 +236,20 @@ export function DeliveryPage({ email }: { email: string }) {
 		setError("");
 	}
 	return (
-		<main className="delivery-page" lang="en" dir="ltr">
+		<main
+			className={`delivery-page${connection ? " delivery-page--connected" : ""}`}
+			lang="en"
+			dir="ltr"
+		>
 			<header className="delivery-header">
 				<a className="delivery-brand" href="/">
-					HopKit<span>by HipHop</span>
+					HopKit<span>Delivery</span>
 				</a>
 				<div className="delivery-actions">
 					<a className="text-button" href="/">
-						Planning home
+						Home
 					</a>
-					<ThemeSwitch />
+					{!connection && <ThemeSwitch />}
 				</div>
 			</header>
 			<div
@@ -255,28 +259,17 @@ export function DeliveryPage({ email }: { email: string }) {
 						: "delivery-intro"
 				}
 			>
-				<p className="eyebrow">Team delivery / Pilot</p>
-				<h1>
-					{connection ? (
-						"Delivery."
-					) : (
-						<>
-							Make room
-							<br />
-							for the work.
-						</>
-					)}
-				</h1>
-				<p>A focused queue. Honest hours. A clear weekly review.</p>
+				{!connection && <p className="eyebrow">Team workspace</p>}
+				<h1>{connection ? "Delivery" : <>Connect your workspace.</>}</h1>
+				{!connection && <p>Your tasks, team updates and time in one place.</p>}
 			</div>
 			{!connection ? (
 				<section className="delivery-connect">
 					<div>
-						<h2>Connect your work.</h2>
+						<h2>Connect with Todoless</h2>
 						<p>
-							Use your personal Todoless key. It stays in memory for this tab
-							and is cleared when you disconnect or leave. HopKit does not save
-							it.
+							Use your personal Todoless key to open your team's tasks. Your key
+							is kept only in this tab and cleared when you leave.
 						</p>
 						<p className="delivery-muted">
 							Signed in to HopKit as {email}. Your Todoless identity and
@@ -343,10 +336,13 @@ export function DeliveryPage({ email }: { email: string }) {
 								maxLength={512}
 							/>
 						</label>
-						<p className="delivery-muted">
-							Needs workspace:read and members:read. Add workspace:write to log
-							time and update tasks.
-						</p>
+						<details className="delivery-optional-fields">
+							<summary>Key permissions</summary>
+							<p className="delivery-muted">
+								Needs workspace:read and members:read. Add workspace:write to
+								log time and update tasks.
+							</p>
+						</details>
 						<button className="button button--primary" disabled={busy}>
 							{busy ? "Connecting..." : "Connect Todoless"}
 						</button>
@@ -356,10 +352,21 @@ export function DeliveryPage({ email }: { email: string }) {
 			) : (
 				<>
 					<section className="delivery-connection">
-						<div>
-							<span className="delivery-muted">Connected as</span>
-							<strong>{connection.user.email}</strong>
-						</div>
+						<details className="delivery-account">
+							<summary>{connection.user.email}</summary>
+							<p className="delivery-muted">
+								Connected to Todoless. Your key stays in this tab.
+							</p>
+							<ThemeSwitch />
+							<button
+								type="button"
+								className="text-button"
+								disabled={busy}
+								onClick={disconnect}
+							>
+								Disconnect &amp; clear key
+							</button>
+						</details>
 						<label>
 							Workspace
 							<select
@@ -378,14 +385,6 @@ export function DeliveryPage({ email }: { email: string }) {
 								))}
 							</select>
 						</label>
-						<button
-							type="button"
-							className="text-button"
-							disabled={busy}
-							onClick={disconnect}
-						>
-							Disconnect &amp; clear key
-						</button>
 					</section>
 					{workspace ? (
 						<WorkspaceDelivery

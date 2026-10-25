@@ -80,7 +80,7 @@ function EntryForm({
 				});
 			}}
 		>
-			<h3>{editing ? "Edit time entry" : "Log human time"}</h3>
+			<h3>{editing ? "Edit time entry" : "Log time"}</h3>
 			<div className="delivery-fields">
 				<label>
 					Project
@@ -170,16 +170,19 @@ function EntryForm({
 					defaultValue={editing?.note}
 				/>
 			</label>
-			<label>
-				Evidence link (optional)
-				<input
-					name="evidence"
-					type="url"
-					pattern="https?://.*"
-					maxLength={2000}
-					defaultValue={editing?.evidence_ref ?? ""}
-				/>
-			</label>
+			<details className="delivery-optional-fields">
+				<summary>Add a link (optional)</summary>
+				<label>
+					Evidence link (optional)
+					<input
+						name="evidence"
+						type="url"
+						pattern="https?://.*"
+						maxLength={2000}
+						defaultValue={editing?.evidence_ref ?? ""}
+					/>
+				</label>
+			</details>
 			<div className="delivery-actions">
 				<button className="button button--primary" disabled={!tasks?.length}>
 					Save time
@@ -218,6 +221,7 @@ function WeekDetail({
 	const [confirm, setConfirm] = useState(false);
 	const [overCap, setOverCap] = useState(false);
 	const [showHistory, setShowHistory] = useState(false);
+	const [removing, setRemoving] = useState<Entry | null>(null);
 	const root = `/v1/workspaces/${workspace.id}/time/weeks/${week.id}`;
 	const loadHistory = useCallback(
 		() =>
@@ -285,18 +289,34 @@ function WeekDetail({
 						{week.state.replaceAll("_", " ")}
 					</p>
 				</div>
-				<div className="delivery-totals">
-					<strong>{hours(total)}</strong>
-					<span>{week.submission ? "submitted" : "logged"}</span>
-					<strong>
-						{approved === undefined ? "Pending" : hours(approved)}
-					</strong>
-					<span>approved</span>
+				<div className="delivery-actions">
+					{edit && !entry && (
+						<button
+							type="button"
+							className="button button--primary"
+							onClick={() => setEntry("new")}
+						>
+							Log time
+						</button>
+					)}
+					<div className="delivery-totals">
+						<strong>{hours(total)}</strong>
+						<span>{week.submission ? "submitted" : "logged"}</span>
+						<strong>
+							{approved === undefined ? "Pending" : hours(approved)}
+						</strong>
+						<span>approved</span>
+					</div>
 				</div>
 			</div>
-			<p className="delivery-muted">
-				Payment is manual and unrecorded here. Hours do not imply payment.
-			</p>
+			{edit && entry && (
+				<EntryForm
+					key={typeof entry === "string" ? "new" : entry.id}
+					{...{ week, client, workspace, projects, run }}
+					editing={entry === "new" ? undefined : entry}
+					close={() => setEntry(null)}
+				/>
+			)}
 			<div className="delivery-table-wrap">
 				<table>
 					<caption>Entries across all projects</caption>
@@ -378,14 +398,10 @@ function WeekDetail({
 										<button
 											type="button"
 											className="text-button"
-											disabled={!reason.trim()}
-											onClick={() =>
-												void action({
-													action: "remove_entry",
-													entry_id: e.id,
-													reason,
-												})
-											}
+											onClick={() => {
+												setRemoving(e);
+												setReason("");
+											}}
 										>
 											Remove
 										</button>
@@ -402,19 +418,74 @@ function WeekDetail({
 					</p>
 				)}
 			</div>
-			<ul className="delivery-project-totals">
-				{totals
-					.filter((p) => p.logged > 0)
-					.map((p) => (
-						<li key={p.id}>
-							<strong>{p.name}</strong> {hours(p.logged)}{" "}
-							{week.submission ? "submitted" : "logged"} ·{" "}
-							{p.approved === undefined
-								? "approval pending"
-								: `${hours(p.approved)} approved`}
-						</li>
-					))}
-			</ul>
+			{removing && (
+				<form
+					className="delivery-form delivery-entry-form"
+					aria-label="Remove time entry"
+					onSubmit={(event) => {
+						event.preventDefault();
+						void run(async () => {
+							await client.mutate("POST", `${root}/actions`, {
+								action: "remove_entry",
+								entry_id: removing.id,
+								version: week.version,
+								reason,
+							});
+							setRemoving(null);
+						});
+					}}
+				>
+					<h4>Remove this entry?</h4>
+					<p>
+						{removing.note} · {hours(removing.minutes)}
+					</p>
+					<label>
+						Reason for removal
+						<textarea
+							required
+							value={reason}
+							onChange={(event) => setReason(event.target.value)}
+							maxLength={1000}
+						/>
+					</label>
+					<div className="delivery-actions">
+						<button
+							className="button button--primary"
+							disabled={!reason.trim()}
+						>
+							Remove entry
+						</button>
+						<button
+							type="button"
+							className="text-button"
+							onClick={() => {
+								setRemoving(null);
+								setReason("");
+							}}
+						>
+							Cancel
+						</button>
+					</div>
+				</form>
+			)}
+			{totals.length > 0 && (
+				<details className="delivery-optional-fields">
+					<summary>Totals by project</summary>
+					<ul className="delivery-project-totals">
+						{totals
+							.filter((p) => p.logged > 0)
+							.map((p) => (
+								<li key={p.id}>
+									<strong>{p.name}</strong> {hours(p.logged)}{" "}
+									{week.submission ? "submitted" : "logged"} ·{" "}
+									{p.approved === undefined
+										? "approval pending"
+										: `${hours(p.approved)} approved`}
+								</li>
+							))}
+					</ul>
+				</details>
+			)}
 			{week.approval?.reason && (
 				<p className="delivery-notice">
 					Approval reason: {week.approval.reason}
@@ -434,13 +505,12 @@ function WeekDetail({
 					week.
 				</p>
 			)}
-			{(edit ||
-				review ||
+			{(review ||
 				(canWrite &&
 					own &&
 					["approved", "changes_requested"].includes(week.state))) && (
 				<label className="delivery-reason">
-					Reason (required for returns, adjustments, revisions and removals)
+					Reason (required for returns, adjustments and revisions)
 					<textarea
 						value={reason}
 						onChange={(e) => setReason(e.target.value)}
@@ -450,41 +520,32 @@ function WeekDetail({
 			)}
 			{edit && (
 				<>
-					<div className="delivery-actions">
-						<button
-							type="button"
-							className="button button--secondary"
-							onClick={() => setEntry("new")}
-						>
-							Log time
-						</button>
-					</div>
-					{entry && (
-						<EntryForm
-							key={typeof entry === "string" ? "new" : entry.id}
-							{...{ week, client, workspace, projects, run }}
-							editing={entry === "new" ? undefined : entry}
-							close={() => setEntry(null)}
-						/>
+					{week.entries.length > 0 && (
+						<details className="delivery-submit-week">
+							<summary>Ready to submit this week?</summary>
+							<p className="delivery-muted">
+								Check your entries before sending them to your reviewer.
+							</p>
+							<label className="delivery-check">
+								<input
+									type="checkbox"
+									checked={confirm}
+									onChange={(e) => setConfirm(e.target.checked)}
+								/>
+								I confirm these entries are actual human time worked.
+							</label>
+							<button
+								type="button"
+								className="button button--primary"
+								disabled={!confirm || !week.entries.length}
+								onClick={() =>
+									void action({ action: "submit", confirmed_human_time: true })
+								}
+							>
+								Submit week for approval
+							</button>
+						</details>
 					)}
-					<label className="delivery-check">
-						<input
-							type="checkbox"
-							checked={confirm}
-							onChange={(e) => setConfirm(e.target.checked)}
-						/>
-						I confirm these entries are actual human time worked.
-					</label>
-					<button
-						type="button"
-						className="button button--primary"
-						disabled={!confirm || !week.entries.length}
-						onClick={() =>
-							void action({ action: "submit", confirmed_human_time: true })
-						}
-					>
-						Submit week for approval
-					</button>
 				</>
 			)}
 			{review && (
@@ -497,14 +558,16 @@ function WeekDetail({
 						/>
 						I have reviewed every entry and the approved minutes.
 					</label>
-					<label className="delivery-check">
-						<input
-							type="checkbox"
-							checked={overCap}
-							onChange={(e) => setOverCap(e.target.checked)}
-						/>
-						Explicitly approve an agreed cap overrun, if applicable
-					</label>
+					{week.submission?.over_cap && (
+						<label className="delivery-check">
+							<input
+								type="checkbox"
+								checked={overCap}
+								onChange={(e) => setOverCap(e.target.checked)}
+							/>
+							Explicitly approve an agreed cap overrun, if applicable
+						</label>
+					)}
 					{week.submission?.over_cap && (
 						<p className="delivery-notice">
 							This submission exceeds the cap recorded at submission. Approve
@@ -667,12 +730,12 @@ export function DeliveryWeeks({
 		<section aria-label={team ? "Weekly approval" : "My hours"}>
 			<div className="delivery-section-heading">
 				<div>
-					<p className="eyebrow">
+					<h2>{team ? "Weekly reviews" : "My time"}</h2>
+					<p className="delivery-muted">
 						{team
-							? "Give work a fair review"
-							: "Small entries, one shared week"}
+							? "Review your team's time before approving it."
+							: "Log your work, then send the week for review."}
 					</p>
-					<h2>{team ? "Weekly approval." : "Your time, across projects."}</h2>
 				</div>
 				<label>
 					Week starting

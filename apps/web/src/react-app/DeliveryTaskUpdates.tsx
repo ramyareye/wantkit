@@ -32,16 +32,18 @@ export function DeliveryProgressForm({
 				);
 			}}
 		>
-			<p>
-				Status stays {card.stage.toLowerCase()}. This update is saved in the
-				task history.
-			</p>
+			<h4>Post an update</h4>
 			<label>
-				Progress note
-				<textarea name="progress" required maxLength={2000} />
+				What changed?
+				<textarea
+					name="progress"
+					required
+					maxLength={2000}
+					placeholder="Share progress or ask for help…"
+				/>
 			</label>
 			<label>
-				Task next action
+				What's next?
 				<input
 					name="next"
 					required
@@ -49,22 +51,25 @@ export function DeliveryProgressForm({
 					defaultValue={card.details.next_action}
 				/>
 			</label>
-			<label>
-				Evidence references (one per line)
-				<textarea
-					name="evidence"
-					maxLength={42000}
-					defaultValue={card.details.evidence.join("\n")}
-				/>
-			</label>
-			<label>
-				Build / commit reference
-				<input
-					name="build"
-					maxLength={2000}
-					defaultValue={card.details.build_ref}
-				/>
-			</label>
+			<details className="delivery-optional-fields">
+				<summary>Add evidence (optional)</summary>
+				<label>
+					Evidence references (one per line)
+					<textarea
+						name="evidence"
+						maxLength={42000}
+						defaultValue={card.details.evidence.join("\n")}
+					/>
+				</label>
+				<label>
+					Build / commit reference
+					<input
+						name="build"
+						maxLength={2000}
+						defaultValue={card.details.build_ref}
+					/>
+				</label>
+			</details>
 			{card.stage === "BLOCKED" && (
 				<>
 					<label>
@@ -104,7 +109,7 @@ export function DeliveryProgressForm({
 					</label>
 				</>
 			)}
-			<button className="button button--primary">Save progress</button>
+			<button className="button button--primary">Post update</button>
 		</form>
 	);
 }
@@ -133,7 +138,7 @@ export function DeliveryTaskFeedback({
 				</div>
 			)}
 			<details>
-				<summary>Task updates &amp; return reasons</summary>
+				<summary>Activity</summary>
 				{updates.length ? (
 					<ol>
 						{updates.map((entry) => (
