@@ -66,7 +66,7 @@
 		"deploy": "bun run deploy:production",
 		"deploy:preview": "bun run build:preview && wrangler deploy",
 		"deploy:production": "bun run build && wrangler deploy",
-		"deployments:production": "wrangler deployments list --name kharidyar --json",
+		"deployments:production": "wrangler deployments list --name hopkit --json",
 		"dev": "vite",
 		"preview": "bun run build:local && vite preview",
 		"release:smoke": "bun run ./scripts/release-smoke.mjs",
@@ -74,7 +74,7 @@
 		"dev:delivery:demo": "bun ./scripts/test-delivery-local.ts --serve",
 		"test:delivery:local": "bun ./scripts/test-delivery-local.ts",
 		"typecheck": "tsc -b",
-		"versions:production": "wrangler versions list --name kharidyar --json"
+		"versions:production": "wrangler versions list --name hopkit --json"
 	},
 	"type": "module"
 }
