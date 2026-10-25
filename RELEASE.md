@@ -1,5 +1,59 @@
 # Release runbook
 
+## Production release — 2026-10-25 (live)
+
+The user authorized deploying the tested candidate to **https://hopkit.hiphop.dev**,
+preserving features/settings/dirty work and checking editing, with no invitations
+or real task import. Released once at **16:27:27 Europe/Amsterdam (15:27:27 UTC)**.
+Runtime source is `c5fee8480ea3697e0c9687e372feeb776f8a750d`; current main/remote
+`ae3f75c31eeae580926121cc54ba2637071750ac` adds only the prior preview notes.
+All 295 committed/working source inputs and 17 production artifacts matched the
+tested frozen package before release. No build/source changes were necessary.
+
+- Worker `kharidyar`, version **`46ffa845-633d-4e27-84d4-e06d3e28688e`** at 100%;
+  deployment `c3bcd9b3-553d-417b-92c0-2baf698dbd4a`.
+- Only additive migration `0017_collection_mode_settings.sql` applied to production
+  D1 `85ccca6c-adde-4125-87de-a4de614b1091`. All **2,791 existing rows across 46
+  application tables** were preserved; the new table was empty. Integrity/FK
+  checks pass before/after. Recovery bookmark is stored in the private receipt.
+- Live variables, inherited secrets, bindings, integrations, compatibility,
+  observability, routes and domains compare preserved. Preview remains accepted
+  version `2e6f6fd9-0110-45f8-8fa1-a3bc9a9027c3`, schema0017. Both Workers had zero
+  Builds triggers. No account/security change, resource rename or other-repo edit.
+- All **15 public production checks** pass, including exact HTML/assets, health,
+  security headers and rejected anonymous private requests. Fresh Google login
+  returns ramyariran@gmail.com to the existing account. HopKit branding and the
+  existing Living Room's 19 items/Home tools load. Brief/images/Concept views load;
+  General mode was inspected in the chooser then cancelled, with no planning write.
+- **Delivery acceptance passed:** the user connected their existing personal key
+  as ramyariran@gmail.com. The original task stayed selected after asynchronous
+  loading; unchanged save succeeded and refresh retained the same single one-minute
+  synthetic draft and all visible fields. No new entry, actual-work confirmation,
+  submission, approval or existing contributor edit. No key read/storage by agent.
+  Planning and Delivery tabs showed no console errors.
+- Final D1 check confirms planning counts/schema/integrity unchanged. Fresh login
+  added one session (13 to 14) and two normal auth rate-limit records (1 to 3);
+  these database-backed Better Auth records are separate from planning data.
+
+Code rollback: `1e7a0d54-1248-4b0a-94a1-4eefd562f854`, retaining settings and the
+additive table/data. No restore/drop is needed. No rollback was required.
+The package is `.tmp/hopkit-time-entry-release-2026-10-25/production/`, using
+`dist/kharidyar/release-preserved.json`; ordinary deploy defaults omit integrations.
+Do not repeat the completed deployment. Evidence is under
+`.tmp/hopkit-combined-release-2026-10-25/`: `production-authorization.json`,
+`production-builds-before.json`, `production-release-{before,after}.json`,
+`production-migration-result.json`, deployment/migration logs,
+`production-public.json`, `production-hosted.json` and screenshots.
+
+Only these four release/handoff documents change in this closeout. The two dirty
+Delivery pilot notes remain byte-for-byte preserved; index empty. No assistant
+staging, commit or push. Next: checkpoint these release notes, then have the
+actual developer complete the separately planned synthetic task/hour acceptance.
+Real imports require their own authorization. No invitation or real import was
+performed, and no further deployment is needed for this accepted candidate.
+
+---
+
 ## HopKit time-entry fix — 2026-10-25 (preview only)
 
 User-pushed `c5fee8480ea3697e0c9687e372feeb776f8a750d` deployed once to preview

@@ -1,3 +1,26 @@
+# Handoff: combined HopKit production release is live
+
+Updated 2026-10-25. Current folder `/Users/reza/Documents/HH/hopkit`.
+The user authorized the production deployment; no invitations or real task import.
+
+- Tested runtime `c5fee84` (notes HEAD `ae3f75c`) deployed once to hopkit.hiphop.dev.
+  Active version `46ffa845-633d-4e27-84d4-e06d3e28688e`; schema0017 now applied.
+- All 2,791 existing rows/46 tables preserved; integrity/FK checks pass. Existing
+  settings, bindings, integrations and domains preserved; preview unchanged.
+- 15 public checks pass. Fresh Google login, HopKit branding, existing 19-item
+  Living Room/Home and brief views verified. General chooser inspected/cancelled.
+- Production Delivery task preselection, unchanged save and refresh persistence
+  pass on the existing one-minute synthetic draft. No new entry/submission/approval.
+  No console errors. Final D1 check shows only expected login bookkeeping changes.
+- Four handoff/release docs updated; two earlier dirty Delivery notes preserved.
+  Index empty; no assistant commit/push. Rollback is `1e7a0d54-...`, retaining 0017.
+
+Next: checkpoint release notes, then developer-led synthetic task/hour acceptance
+in the Todoless chat. No further deployment needed. Real imports remain separate.
+See [release details](./HOPKIT_TIME_ENTRY_RELEASE.md). Older sections are historical.
+
+---
+
 # Handoff: task-preselection fix deployed and accepted in preview
 
 Updated 2026-10-25. Checkout/chat: `/Users/reza/Documents/HH/hopkit`.
