@@ -1,18 +1,14 @@
-# HopKit production candidate — prepared, not deployed
-
-**Task-preselection candidate update, 2026-10-25:** local reconciliation is complete.
-[HOPKIT_TIME_ENTRY_RELEASE.md](./HOPKIT_TIME_ENTRY_RELEASE.md) records the refreshed
-packages, 117 UI tests, browser regression and preserved-config dry-runs. The two
-preparation packages have identical source and artifact hashes, verified during
-checkpoint review. The deployed preview and original frozen evidence are preserved.
-Preview rollout of the fix and production rollout still need explicit approval.
+# HopKit combined release — preview accepted; production paused
 
 Updated 2026-10-25. Checkout/chat: **`/Users/reza/Documents/HH/hopkit`**.
-The user requested review of the local time-entry fix and combined production
-preparation, with **no deployment**. Review and local validation are complete.
-Candidate captured from pushed `cd6e21a27d522de71b016aa09d49c74d884c60ca` plus the
-two reviewed files below. No application edits were needed during this review.
-**Do not deploy either environment or apply production migrations yet.**
+User-pushed `c5fee8480ea3697e0c9687e372feeb776f8a750d` contains the reviewed
+combined release plus the time-entry fix. The six-file checkpoint and all 295
+application/build inputs match the tested packages. User's subsequent “go”
+authorized the preview update and edit/save check only; both are complete.
+**Do not deploy production or apply production migrations yet.**
+
+[HOPKIT_TIME_ENTRY_RELEASE.md](./HOPKIT_TIME_ENTRY_RELEASE.md) records exact
+release evidence, the retained synthetic draft and next production steps.
 
 ## Reviewed change and validation
 
@@ -40,28 +36,35 @@ two reviewed files below. No application edits were needed during this review.
   evidence remain applicable to unchanged backend/domain/MCP code. The fresh
   focused suite covers the only runtime delta. No migration or binding was added.
 
-## Live state — unchanged by this preparation
+## Live state — verified after preview deployment
 
 | Environment | Worker | Active version (100%) | Schema |
 | --- | --- | --- | --- |
-| Preview | kharidyar-preview | `6e1e2616-0e86-42c7-8886-622dedf96364` | 0017 |
+| Preview | kharidyar-preview | `2e6f6fd9-0110-45f8-8fa1-a3bc9a9027c3` | 0017 |
 | Production | kharidyar | `1e7a0d54-1248-4b0a-94a1-4eefd562f854` | 0016 |
 
-Preview: https://kharidyar-preview.formahsa.workers.dev. Its combined release is
-live, but **does not contain the time-entry fix**. Deployment:
-`af71c074-e320-4a0d-9e9e-b5e42e7fe563`. Production retains its Delivery-only baseline
-and both `hopkit.hiphop.dev` / `wantkit.todoless.dev` domains. Fresh read-only checks
-confirm both versions, preserved settings/domains and unchanged production schema.
-The earlier trigger inventory found zero Builds triggers and no GitHub workflows;
-refresh this inventory before any push or deployment.
+Preview: https://kharidyar-preview.formahsa.workers.dev, now including the
+selection fix. Deployment `244cb337-7a12-48b5-a9a2-fa96924ae6cb` completed once
+at 2026-10-25 14:57:55 UTC. Post-deploy guards confirm production, settings,
+bindings, domains and schemas unchanged; integrity/FK checks pass. No migration
+ran. Both Workers have zero Builds triggers; no GitHub workflows were present.
+
+New acceptance: all 15 public checks match the frozen package; existing Google
+session and reconnected Todoless account are ramyariran@gmail.com. Saved task
+preselection survives asynchronous loading, unchanged save succeeds, switching
+projects (including back) requires a new task selection, and cancel/refresh
+preserves saved fields. One synthetic one-minute QA entry remains **unsubmitted**
+in Reza's draft week starting 2026-10-19 in HipHop delivery rehearsal, Grow/G-01.
+No actual-work confirmation, approval/payment or existing contributor edit. The
+preview uses live Todoless, so this labelled draft is retained there for review.
 
 Completed combined-preview acceptance: 15 public artifact/health/private-boundary
 checks; fresh Google login as ramyariran@gmail.com; existing legacy Home data;
 HopKit branding; synthetic General→Home→General and reload with shared brief,
 preferences, palette, references and retained Home concept; EN/FA/RTL/mobile.
 Authenticated Delivery workspace, own/contributor queues, portfolio, hours and
-weekly approval/audit history load without console errors. Those hosted checks
-were read-only and did not exercise the time-entry fix or create Delivery records.
+weekly approval/audit history load without console errors. Those earlier checks
+were read-only; the new targeted synthetic edit/save acceptance is recorded above.
 
 Preview migration 0017 previously preserved all 314 existing rows across 46
 application tables and added an empty mode-settings table. Integrity checks pass.
@@ -103,36 +106,31 @@ not an alternate source tree. All application work/builds stayed in this checkou
 - Logs: `time-entry-integration.log`, `time-entry-ui.log`, `time-entry-lint.log`,
   `time-entry-types.log`, `time-entry-{preview,production}-build.log` and matching
   dry-run logs. `with-time-entry/artifact-verification.json` records comparisons.
-  `preview-release-after.json` records the fresh read-only live check.
+  `time-entry-preview-after.json` records the completed preview release guards;
+  `time-entry-public.json` and `time-entry-hosted.json` record current acceptance.
 
 Do not use ordinary deploy defaults; they disable integrations and omit Delivery's
-origin. Future preview rollback target is its current version `6e1e2616-...` above;
+origin. Preview rollback target is the previous version `6e1e2616-0e86-42c7-8886-622dedf96364`;
 production rollback target is its current `1e7a0d54-...` version. Preserve settings
 and the additive 0017 table when reverting code. No D1 restore/drop is needed for
 code rollback; destructive recovery requires separate approval.
 
 ## Next steps and dirty state
 
-1. Exact commit approval is pending for the six-file checkpoint: the time-entry
-   form, its integration test and four release/handoff documents. After an
-   approved commit, verify the resulting source hashes and follow the separate
-   exact-SHA push gate. Neither push nor deployment is authorized.
-2. After deployment is authorized, refresh source/artifact/live-state guards and
-   deploy the **revised preview candidate** (0017 is already applied there). Verify
-   the time-entry edit in preview, retaining existing hosted acceptance evidence.
-3. Only after preview acceptance and **separate production authorization**, refresh
-   D1 bookmark/counts, apply only `0017_collection_mode_settings.sql` to production
-   `85ccca6c-adde-4125-87de-a4de614b1091`, deploy the matched preserved candidate,
-   and verify both domains/account flows. No remote migration ran in this prep.
+1. Checkpoint four release/handoff updates: HANDOFF.md,
+   HOPKIT_COMBINED_HANDOFF.md, HOPKIT_TIME_ENTRY_RELEASE.md and RELEASE.md.
+   The source checkpoint was committed/pushed by the user; the agent performed
+   no Git mutation here. Index remains empty. The two pre-existing
+   DELIVERY_PILOT_RELEASE.md/JSON changes remain byte-for-byte preserved.
+2. Only with **separate production authorization**, refresh source/artifact/live
+   guards and D1 bookmark/counts, apply `0017_collection_mode_settings.sql` to
+   production `85ccca6c-adde-4125-87de-a4de614b1091`, deploy the matched preserved
+   candidate and verify both domains/account flows. Preview acceptance is complete.
 
-The checkpoint contains only the reviewed runtime/test files and HANDOFF.md,
-HOPKIT_COMBINED_HANDOFF.md, HOPKIT_TIME_ENTRY_RELEASE.md and RELEASE.md. The two pre-existing
-DELIVERY_PILOT_RELEASE.md/JSON changes remain byte-for-byte preserved and unstaged.
-No generated artifacts, secrets or unrelated pilot changes belong in this commit.
-Checkpoint reconciliation changes only release/handoff documents plus ignored evidence.
-No other repository was edited; no source copy, worktree, resource rename, account
-or security change. Life Planner/Food, real task imports and full Cloudflare
-resource migration remain separate work.
+No generated artifacts, secrets or unrelated pilot changes belong in the notes
+checkpoint. No other repository edit, source copy, worktree, resource rename,
+account/security change or invitation. Life Planner/Food, real task imports and
+full Cloudflare resource migration remain separate work.
 
 Current documentation: [Wrangler dry-run and variable preservation](https://developers.cloudflare.com/workers/wrangler/commands/workers/),
 [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/) and

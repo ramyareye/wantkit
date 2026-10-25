@@ -1,8 +1,9 @@
 # HopKit time-entry release candidate
 
-Prepared 2026-10-25 in `/Users/reza/Documents/HH/hopkit`. **Local validation complete;
-not deployed, committed or pushed.** This note is included in the requested Git
-checkpoint; exact staged-tree/commit approval is pending. Other dirty work is preserved.
+Updated 2026-10-25 in `/Users/reza/Documents/HH/hopkit`. **Pushed by the user and
+deployed to preview; hosted edit/save acceptance passed. Production is paused.**
+Commit `c5fee8480ea3697e0c9687e372feeb776f8a750d` matches the reviewed six-file
+checkpoint and all 295 tested source inputs. No assistant commit or push.
 
 ## Exact scope
 
@@ -36,8 +37,17 @@ in the combined candidate. Company work remains in Linear; payments stay manual.
 - Prior 387-test combined release and hosted preview acceptance remain recorded in
   HOPKIT_COMBINED_HANDOFF.md; unchanged backend/MCP/schema suites were not repeated.
   Existing chunk-size/shared-module build warnings remain; no failed check.
-- Hosted acceptance of this new fix is pending. This checkpoint made no live API,
-  task/hour/calendar, invitation, deployment or migration changes.
+- Hosted preview acceptance passed after deployment: saved task restored when
+  asynchronous options arrived; unchanged save succeeded; changing project and
+  changing back left the required task blank; cancelling and refreshing retained
+  the original fields. Deliberately delayed responses remain covered locally.
+- The test created Reza's draft week starting 2026-10-19 and one explicitly
+  synthetic one-minute QA entry dated 2026-10-25 in **HipHop delivery rehearsal**,
+  project `[SYNTHETIC-2026-10-25] Grow`, task G-01. Its note says this is not actual
+  worked/payable time and must remain unsubmitted. No actual-work confirmation,
+  submission, approval, payment, task mutation or deletion. Existing approved
+  contributor rehearsal records were not edited. Preview uses the live Todoless
+  backend; this synthetic draft is retained there for review, not in preview D1.
 
 ## Frozen local package
 
@@ -71,29 +81,43 @@ The helper's original HEAD/index guards must be reviewed after staging or an
 approved commit; retain the captured content hashes rather than replacing its
 baseline. Git approval and push gates remain separate from deployment approval.
 
+## Preview deployment and recovery
+
+User-authorized preview deployment ran once at 2026-10-25 14:57:55 UTC:
+
+- Worker `kharidyar-preview`, active version
+  `2e6f6fd9-0110-45f8-8fa1-a3bc9a9027c3` at 100%; deployment
+  `244cb337-7a12-48b5-a9a2-fa96924ae6cb`.
+- All 15 public route/asset/health/private-boundary checks pass against the frozen
+  package. Existing Google session and manually reconnected personal Todoless
+  identity are ramyariran@gmail.com. Keys were not read or stored by the agent.
+- Preview remains on 0017. No migration ran. Before/after guards confirm all
+  settings, bindings, inherited secrets and domains preserved; D1 integrity/FK
+  checks pass. Production Worker/settings/domains/schema remain unchanged at
+  `1e7a0d54-1248-4b0a-94a1-4eefd562f854`, schema 0016. Zero Builds triggers for
+  either Worker were freshly verified; no GitHub workflows were present.
+- Preview code rollback target: `6e1e2616-0e86-42c7-8886-622dedf96364`.
+  Retain settings and schema/data. No database restore/drop is needed.
+
+Evidence under `.tmp/hopkit-combined-release-2026-10-25/`:
+`checkpoint-push-verification.json`, `time-entry-builds-before.json`,
+`time-entry-preview-{authorization,before,after}.json`, deployment logs,
+`time-entry-public.json`, and `time-entry-hosted.json`/screenshots.
+The completed deployment-started marker must remain; do not redeploy this package
+just to repeat verification. `time-entry-preview.mjs after` is read-only remotely.
+
 ## Next release, in order
 
-1. Obtain explicit **preview-only code deployment** approval for this candidate.
-   Refresh active/latest versions, preserved settings/domains and source/artifact
-   hashes. Preview should still be `6e1e2616-0e86-42c7-8886-622dedf96364` on schema
-   0017 according to the prior release evidence. Stop on unexpected drift.
-2. Deploy the frozen preview package with its preserved configuration. No new
-   preview migration. Verify asset hashes, health/private access and synthetic
-   delayed-load edit/save behavior, plus existing Delivery and planning views.
-   Reconnect personal keys manually if needed; keep them out of tools/chat/logs.
-3. Use the existing combined preview version above as the code rollback target;
-   retain schema/data/settings. Do not roll back database data for this UI fix.
-4. Production remains a separate decision after preview acceptance. The recorded
-   production baseline is `1e7a0d54-1248-4b0a-94a1-4eefd562f854` on schema 0016.
-   Releasing the combined package there also introduces its already-previewed
-   branding/General/Home features and requires existing additive migration
-   `0017_collection_mode_settings.sql`, fresh live guards/bookmark/counts and
-   separate production authorization. No new migration belongs to the selection fix.
-5. Git commit and push retain their exact approval gates. Developer's own hosted
-   action and real VE-A05/VE-B02 import remain separate follow-ups; no import is
-   authorized by this package.
+1. Review/checkpoint these four updated release/handoff documents separately from
+   the two preserved dirty Delivery pilot notes. Commit and push keep their exact
+   approval gates; no staging, commit or push was performed for this closeout.
+2. Production needs separate authorization. Refresh remote/source/artifact and
+   provider-state guards, capture D1 bookmark/counts, apply only additive
+   `0017_collection_mode_settings.sql`, then deploy the matching preserved
+   production package and verify both domains, login, General/Home and Delivery.
+   The established code rollback target is `1e7a0d54-...`; preserve additive data.
+3. Developer's own hosted action, real VE-A05/VE-B02 import, Life Planner/Food and
+   full Cloudflare resource migration remain separate work.
 
-Current live values above are taken from the prior release evidence, not new
-provider reads in this local preparation checkpoint. Technical references:
-[Wrangler dry-run](https://developers.cloudflare.com/workers/wrangler/commands/workers/#deploy)
+Technical references: [Wrangler deploy](https://developers.cloudflare.com/workers/wrangler/commands/workers/#deploy)
 and [code rollback](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).

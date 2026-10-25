@@ -1,19 +1,26 @@
-# Handoff: task-preselection release candidate validated locally
+# Handoff: task-preselection fix deployed and accepted in preview
 
-Updated 2026-10-25. The next combined preview/production packages now include the
-controlled task selector and its delayed-load regression. All 295 source inputs
-are recorded; only the two intended Delivery files differ from pushed `cd6e21a`.
-Fresh 117 UI tests, synthetic browser delivery checks, TypeScript/builds and both
-preserved-config dry-runs pass. Worker modules, CSS/static assets, configurations
-and previous artifacts are preserved. Both preparation packages have identical
-source and artifact hashes. The six-file Git checkpoint is prepared for exact
-approval; no live change, commit or push.
+Updated 2026-10-25. Checkout/chat: `/Users/reza/Documents/HH/hopkit`.
+User-pushed `c5fee8480ea3697e0c9687e372feeb776f8a750d` matches the reviewed
+six-file checkpoint and all 295 tested inputs. Authorized preview deployment ran
+once; active version `2e6f6fd9-0110-45f8-8fa1-a3bc9a9027c3`, schema 0017.
 
-See [HOPKIT_TIME_ENTRY_RELEASE.md](./HOPKIT_TIME_ENTRY_RELEASE.md) for exact scope,
-new artifact location, verification and rollback. Next is exact commit approval,
-then separate push approval; preview-only deployment and hosted edit acceptance
-need their own authorization. Production remains paused.
-Original combined-release evidence below is historical and must remain intact.
+- 15 public checks pass; assets match the frozen package. Preserved settings,
+  bindings, domains and database integrity verified. No migration ran.
+- Connected as ramyariran@gmail.com; hosted task preselection, unchanged save,
+  project-switch/reset and refresh persistence pass. A clearly labelled one-minute
+  synthetic draft remains in Reza's 2026-10-19 rehearsal week. It was not submitted
+  or approved; existing approved rehearsal entries were not edited.
+- Production remains `1e7a0d54-1248-4b0a-94a1-4eefd562f854`, schema 0016.
+  **Production deployment/migration still requires separate authorization.**
+- This closeout changes only HANDOFF.md, HOPKIT_COMBINED_HANDOFF.md,
+  HOPKIT_TIME_ENTRY_RELEASE.md and RELEASE.md. Two pre-existing dirty Delivery
+  pilot notes are preserved. Index empty; no assistant commit/push.
+
+Next: checkpoint the release notes, then separately authorize production's
+additive 0017 migration and matching preserved package. See
+[HOPKIT_TIME_ENTRY_RELEASE.md](./HOPKIT_TIME_ENTRY_RELEASE.md) for evidence,
+synthetic draft scope and rollback. Older sections below are historical.
 
 ---
 

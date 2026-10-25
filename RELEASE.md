@@ -1,43 +1,47 @@
 # Release runbook
 
-**Combined HopKit production candidate prepared — 2026-10-25; not deployed.**
-Current checkout `/Users/reza/Documents/HH/hopkit`. Candidate is pushed `cd6e21a`
-plus two reviewed time-entry form/test changes. Review found no blocker:
-the controlled task select preserves an edited entry's task when options load,
-and resets it on project changes. No new migration/binding/application fix here.
+## HopKit time-entry fix — 2026-10-25 (preview only)
 
-Fresh lint (generated `.tmp/**` excluded), types, 117 UI tests, real local Delivery
-integration, both builds and both preserved-config dry-runs pass. Integration covers
-delayed options, unchanged-entry fields/IDs, explicit selection/reset, task workflow,
-exact retry, hours/approval/history, CSV, mobile and memory-only keys. The previous
-387-test/schema/migration gate remains valid for unchanged backend/domain/MCP code.
+User-pushed `c5fee8480ea3697e0c9687e372feeb776f8a750d` deployed once to preview
+at 14:57:55 UTC. Exact six-file checkpoint and 295 tested source inputs verified.
+Task selection now survives delayed options when editing; project changes clear it.
 
-New compiled artifacts/manifests are in
-`.tmp/hopkit-combined-release-2026-10-25/with-time-entry/`; old deployed evidence is
-retained. Both candidates preserve all verified live settings. Worker code is
-byte-identical to combined preview; new client artifacts match across environments.
-See [HOPKIT_COMBINED_HANDOFF.md](./HOPKIT_COMBINED_HANDOFF.md) for exact hashes/guards.
+| Environment | Active version (100%) | Schema |
+| --- | --- | --- |
+| Preview | `2e6f6fd9-0110-45f8-8fa1-a3bc9a9027c3` | 0017 |
+| Production (unchanged) | `1e7a0d54-1248-4b0a-94a1-4eefd562f854` | 0016 |
 
-| Environment | Still active | Schema | Next authorized rollout |
-| --- | --- | --- | --- |
-| Preview | `6e1e2616-0e86-42c7-8886-622dedf96364` | 0017 | Revised candidate + hosted edit check |
-| Production | `1e7a0d54-1248-4b0a-94a1-4eefd562f854` | 0016 | Additive 0017, then matched candidate |
+- **Validation:** 117 UI tests, lint/types, real local Delivery integration,
+  both builds and preserved-config dry-runs passed before release. The previous
+  387-test/schema/migration gate covers unchanged backend code. All 15 new public
+  checks pass against exact frozen assets. Connected hosted edit/save, loading
+  preselection, project-reset and refresh persistence pass. Existing Google login,
+  HopKit branding and earlier General/Home/Delivery acceptance are retained.
+- **Synthetic data:** Reza's draft rehearsal week starting 2026-10-19 contains one
+  labelled one-minute QA entry for Grow/G-01, dated 2026-10-25. Its note explicitly
+  excludes actual/payable work; it was not submitted or approved. Existing approved
+  contributor records were not edited. This draft is in live Todoless because
+  preview preserves that established backend binding.
+- **Preservation:** settings, variables, inherited secrets, bindings, domains and
+  schemas compare unchanged; D1 integrity/FK checks pass. No migration ran. Zero
+  Builds triggers freshly verified for both Workers. Production remains paused.
+- **Artifact:** deployed from `.tmp/hopkit-time-entry-release-2026-10-25/preview/`
+  with `dist/kharidyar/release-preserved.json`. Equivalent `with-time-entry` package
+  and original combined package remain intact. Default deploy settings omit live
+  integrations and must not be used. Deployment ID
+  `244cb337-7a12-48b5-a9a2-fa96924ae6cb`; do not repeat the completed deployment.
+- **Recovery:** preview code rollback `6e1e2616-0e86-42c7-8886-622dedf96364`;
+  retain settings, schema and data. Production rollback baseline remains its
+  current version above. No database rollback is needed for this frontend fix.
+- **Evidence:** `.tmp/hopkit-combined-release-2026-10-25/time-entry-preview-*.json`,
+  deploy logs, `time-entry-public.json`, `time-entry-hosted.json` and screenshots.
+  See [HOPKIT_TIME_ENTRY_RELEASE.md](./HOPKIT_TIME_ENTRY_RELEASE.md).
 
-Fresh live checks confirm these versions, domains and settings unchanged. The
-previous combined preview passed login, branding, General/Home persistence and
-read-only connected Delivery acceptance; it **does not include the edit fix**.
-**Do not deploy or apply remote migrations yet.** After Git review/approval gates,
-refresh and accept the revised preview before separately authorizing production.
-The active versions above are the respective future rollback targets; retain
-additive schema/data on code rollback. Never use disabled default deploy settings.
-
-The six-file checkpoint covers the form, its regression test and four
-release/handoff documents, including HOPKIT_TIME_ENTRY_RELEASE.md. Both retained
-preparation packages have matching source/artifact hashes; exact commit approval
-is pending. The two earlier
-Delivery pilot notes remain unstaged and unchanged by this preparation. No commit,
-push, source copy, resource rename or other-repository edit. Life Planner/Food and
-Cloudflare resource migration remain outside this release.
+Only four release/handoff documents changed in this closeout; earlier dirty
+Delivery pilot notes remain preserved and unstaged. No assistant commit/push.
+Next: notes checkpoint, then separately authorize production's additive 0017
+migration and matched preserved package with fresh guards and account checks.
+Life Planner/Food and Cloudflare resource renaming remain outside this release.
 
 ## HopKit production domain — 2026-10-23 (live)
 
