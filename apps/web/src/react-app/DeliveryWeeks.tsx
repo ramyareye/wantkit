@@ -38,6 +38,7 @@ function EntryForm({
 	close: () => void;
 }) {
 	const [project, setProject] = useState(editing?.project_id ?? "");
+	const [task, setTask] = useState(editing?.task_id ?? "");
 	const load = useCallback(
 		() =>
 			project
@@ -87,7 +88,10 @@ function EntryForm({
 						aria-label="Project"
 						required
 						value={project}
-						onChange={(e) => setProject(e.target.value)}
+						onChange={(e) => {
+							setProject(e.target.value);
+							setTask("");
+						}}
 					>
 						<option value="">Choose a project</option>
 						{projects.map((p) => (
@@ -103,10 +107,8 @@ function EntryForm({
 						aria-label="Task"
 						name="task"
 						required
-						key={project}
-						defaultValue={
-							editing?.project_id === project ? editing.task_id : ""
-						}
+						value={task}
+						onChange={(e) => setTask(e.target.value)}
 						disabled={!tasks || tasks.length === 0}
 					>
 						<option value="">

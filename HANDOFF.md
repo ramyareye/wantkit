@@ -1,3 +1,76 @@
+# Handoff: task-preselection release candidate validated locally
+
+Updated 2026-10-25. The next combined preview/production packages now include the
+controlled task selector and its delayed-load regression. All 295 source inputs
+are recorded; only the two intended Delivery files differ from pushed `cd6e21a`.
+Fresh 117 UI tests, synthetic browser delivery checks, TypeScript/builds and both
+preserved-config dry-runs pass. Worker modules, CSS/static assets, configurations
+and previous artifacts are preserved. Both preparation packages have identical
+source and artifact hashes. The six-file Git checkpoint is prepared for exact
+approval; no live change, commit or push.
+
+See [HOPKIT_TIME_ENTRY_RELEASE.md](./HOPKIT_TIME_ENTRY_RELEASE.md) for exact scope,
+new artifact location, verification and rollback. Next is exact commit approval,
+then separate push approval; preview-only deployment and hosted edit acceptance
+need their own authorization. Production remains paused.
+Original combined-release evidence below is historical and must remain intact.
+
+---
+
+# Handoff: combined production candidate prepared; no deployment
+
+Updated 2026-10-25. Checkout/chat: `/Users/reza/Documents/HH/hopkit`.
+Candidate captured from pushed `cd6e21a` plus the reviewed DeliveryWeeks.tsx and
+local integration-test changes. No blocking review finding or new source fix.
+
+- Saved tasks now remain selected after delayed option loading; project switches
+  clear the selection. Real local integration checks verify unchanged-entry saves,
+  IDs/fields, loading/reset behavior and the full task/hours/approval/CSV workflow.
+- Fresh lint/types, 117 UI tests, local integration, preview/production builds and
+  preserved-config dry-runs pass. All three Worker modules are unchanged from the
+  combined preview; new client bytes match across both prepared environments.
+- Preview remains combined version `6e1e2616-0e86-42c7-8886-622dedf96364`, schema0017,
+  without this fix. Production remains `1e7a0d54-1248-4b0a-94a1-4eefd562f854`,
+  schema0016. Settings/domains verified unchanged. **Neither deployment authorized.**
+- Git checkpoint scope: DeliveryWeeks.tsx, test-delivery-local.ts, HANDOFF.md,
+  HOPKIT_COMBINED_HANDOFF.md, HOPKIT_TIME_ENTRY_RELEASE.md and RELEASE.md.
+  The two earlier Delivery pilot notes
+  remain outside this checkpoint. Exact staged-tree/commit approval is pending;
+  no commit, push, migration or deployment is authorized by this preparation.
+
+Next: approve this exact checkpoint, then obtain separate push approval. A revised
+preview release/edit check must precede separately authorized production rollout.
+See [combined handoff](./HOPKIT_COMBINED_HANDOFF.md) for immutable candidate evidence,
+source/artifact guards, rollback targets and the previous hosted acceptance.
+
+---
+
+# Handoff: combined HopKit preview deployed
+
+Updated 2026-10-25. Checkout/project/chat: `/Users/reza/Documents/HH/hopkit`.
+Deployed source is pushed `cd6e21a`; index remains empty.
+
+- Authorized preview migration 0017 and deployment completed. Active preview version
+  `6e1e2616-0e86-42c7-8886-622dedf96364`; settings and existing data preserved.
+- Pre-release gates: lint/types/schema metadata, 387 tests, both builds and preserved
+  dry-runs pass. Hosted checks: 15 public checks, fresh existing-account Google login,
+  HopKit branding, General/Home persistence and retained Home details, EN/FA/mobile.
+- Authenticated Delivery checks pass as ramyariran@gmail.com: workspace, own and
+  synthetic contributor queues, portfolio, hours and weekly approval/audit history.
+  Checks were read-only; no Delivery records or key read/storage changed by agent.
+- Production remains version `1e7a0d54-1248-4b0a-94a1-4eefd562f854`, schema 0016,
+  both domains/settings unchanged. **No production deployment authorized.**
+- Only HANDOFF, HOPKIT_COMBINED_HANDOFF and RELEASE updated by this check. Two
+  pre-existing dirty Delivery notes preserved. Concurrent DeliveryWeeks.tsx and
+  test-delivery-local.ts edits are not deployed or validated here; frozen artifacts
+  still match. Seven files dirty, unstaged. No commit/push/other-repo edits.
+
+Next: review preview and reconcile concurrent Delivery time-entry changes before
+choosing the production candidate and obtaining separate production authorization. See [combined handoff](./HOPKIT_COMBINED_HANDOFF.md) for exact
+versions, recovery, synthetic QA collection and private evidence paths.
+
+---
+
 # Handoff: combined HopKit source ready for commit review
 
 Updated 2026-10-24. Read [HOPKIT_COMBINED_HANDOFF.md](./HOPKIT_COMBINED_HANDOFF.md)

@@ -576,6 +576,21 @@ try {
 		let loseFirstSave = true;
 		let lostCommand: string | null = null;
 		let replayedCommand: string | null = null;
+		let pendingTaskLoad:
+			| {
+					started: () => void;
+					released: Promise<void>;
+			  }
+			| undefined;
+		function holdNextTaskLoad() {
+			const started = Promise.withResolvers<void>();
+			const released = Promise.withResolvers<void>();
+			pendingTaskLoad = {
+				started: started.resolve,
+				released: released.promise,
+			};
+			return { started: started.promise, release: released.resolve };
+		}
 		await page.route(
 			"**/api/delivery/request",
 			async (route: {
@@ -586,6 +601,12 @@ try {
 			}) => {
 				const body = route.request().postData();
 				const command = JSON.parse(body);
+				if (pendingTaskLoad && command.path.includes("/tasks?project_id=")) {
+					const pending = pendingTaskLoad;
+					pendingTaskLoad = undefined;
+					pending.started();
+					await pending.released;
+				}
 				if (command.body?.action === "save_entry") {
 					if (loseFirstSave) {
 						loseFirstSave = false;
@@ -717,6 +738,14 @@ try {
 			await page
 				.getByLabel("Project", { exact: true })
 				.selectOption(pair.project.id);
+
+			await page
+				.locator(`select[name="task"] option[value="${pair.task.id}"]`)
+				.waitFor({ state: "attached" });
+			assert.equal(
+				await page.getByLabel("Task", { exact: true }).inputValue(),
+				"",
+			);
 			await page.getByLabel("Task", { exact: true }).selectOption(pair.task.id);
 			await page
 				.getByLabel("Minutes", { exact: true })
@@ -738,6 +767,119 @@ try {
 				.first()
 				.waitFor();
 		}
+		// Hold options until the edit form has mounted: defaultValue cannot recover here.
+		const beforeEdit = (
+			await api(
+				"GET",
+				`${timeRoot}/weeks?from=2026-10-19&to=2026-10-19`,
+				undefined,
+				member.key,
+			)
+		).weeks[0];
+		const taskInput = page.getByLabel("Task", { exact: true });
+		const projectInput = page.getByLabel("Project", { exact: true });
+		const editVeloura = page
+			.getByRole("row")
+			.filter({ hasText: "Veloura device QA" })
+			.getByRole("button", { name: "Edit", exact: true });
+		const delayed = holdNextTaskLoad();
+		await editVeloura.click();
+		await delayed.started;
+		try {
+			assert.equal(await taskInput.isDisabled(), true);
+			assert.equal(
+				await page
+					.getByRole("button", { name: "Save time", exact: true })
+					.isDisabled(),
+				true,
+			);
+			assert.equal(await projectInput.inputValue(), pairs[1].project.id);
+		} finally {
+			delayed.release();
+		}
+		await page
+			.locator(`select[name="task"] option[value="${pairs[1].task.id}"]`)
+			.waitFor({ state: "attached" });
+		assert.equal(
+			await taskInput.inputValue(),
+			pairs[1].task.id,
+			"Edit must preselect the saved task after delayed options load",
+		);
+		assert.equal(await page.getByLabel("Work date").inputValue(), "2026-10-19");
+		assert.equal(
+			await page.getByLabel("Minutes", { exact: true }).inputValue(),
+			"120",
+		);
+		await page.getByRole("button", { name: "Save time", exact: true }).click();
+		await page
+			.getByRole("heading", { name: "Edit time entry" })
+			.waitFor({ state: "hidden" });
+		const afterEdit = (
+			await api(
+				"GET",
+				`${timeRoot}/weeks?from=2026-10-19&to=2026-10-19`,
+				undefined,
+				member.key,
+			)
+		).weeks[0];
+		assert.equal(afterEdit.version, beforeEdit.version + 1);
+		assert.deepEqual(
+			afterEdit.entries,
+			beforeEdit.entries,
+			"Saving without reselecting preserves entry/task IDs and all logged fields",
+		);
+
+		// Changing projects must clear the old selection, including on a switch back.
+		await editVeloura.click();
+		await page
+			.locator(`select[name="task"] option[value="${pairs[1].task.id}"]`)
+			.waitFor({ state: "attached" });
+		const changed = holdNextTaskLoad();
+		await projectInput.selectOption(pairs[0].project.id);
+		await changed.started;
+		try {
+			assert.equal(await taskInput.isDisabled(), true);
+			assert.equal(await taskInput.inputValue(), "");
+		} finally {
+			changed.release();
+		}
+		await page
+			.locator(`select[name="task"] option[value="${pairs[0].task.id}"]`)
+			.waitFor({ state: "attached" });
+		assert.equal(await taskInput.inputValue(), "");
+		assert.equal(
+			await page
+				.locator(`select[name="task"] option[value="${pairs[1].task.id}"]`)
+				.count(),
+			0,
+		);
+		await taskInput.selectOption(pairs[0].task.id);
+		assert.equal(await taskInput.inputValue(), pairs[0].task.id);
+		await projectInput.selectOption(pairs[1].project.id);
+		await page
+			.locator(`select[name="task"] option[value="${pairs[1].task.id}"]`)
+			.waitFor({ state: "attached" });
+		assert.equal(await taskInput.inputValue(), "");
+		await page.getByRole("button", { name: "Save time", exact: true }).click();
+		assert.equal(
+			await page.getByRole("heading", { name: "Edit time entry" }).isVisible(),
+			true,
+		);
+		assert.equal(
+			(
+				await api(
+					"GET",
+					`${timeRoot}/weeks?from=2026-10-19&to=2026-10-19`,
+					undefined,
+					member.key,
+				)
+			).weeks[0].version,
+			afterEdit.version,
+		);
+		await page.getByRole("button", { name: "Cancel", exact: true }).click();
+		console.log(
+			"PASS: delayed edit preselection, unchanged entry save, explicit new-task choice and project-switch reset/required validation.",
+		);
 		assert.equal(
 			await page.getByLabel("Week starting").inputValue(),
 			"2026-10-19",
